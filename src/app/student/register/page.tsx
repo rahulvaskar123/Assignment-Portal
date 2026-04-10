@@ -64,7 +64,7 @@ export default function StudentRegister() {
                 <Label htmlFor="name">Full Name</Label>
                 <Input 
                   id="name" 
-                  placeholder="John Doe" 
+                  placeholder="Rahul" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required 

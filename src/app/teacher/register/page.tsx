@@ -65,11 +65,11 @@ export default function TeacherRegister() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="Dr. Jane Smith" value={name} onChange={(e) => setName(e.target.value)} required />
+                  <Input id="name" placeholder="Dr. Vinayak Bharadi" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="jane.smith@uni.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input id="email" type="email" placeholder="vinayak.bharadi@uni.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
               </div>
 

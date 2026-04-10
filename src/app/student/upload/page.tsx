@@ -11,7 +11,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UploadCloud, FileCheck, Loader2, AlertCircle, LogOut, ArrowLeft, BookOpen, Clock, CheckCircle2 } from 'lucide-react';
+import { 
+  UploadCloud, 
+  FileCheck, 
+  Loader2, 
+  AlertCircle, 
+  LogOut, 
+  BookOpen, 
+  Clock, 
+  CheckCircle2, 
+  Trash2, 
+  Eye,
+  FileText
+} from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
 
@@ -121,6 +133,31 @@ export default function StudentDashboard() {
       setDescription('');
       setSubject('');
     }, 2000);
+  };
+
+  const handleDeleteSubmission = (id: string) => {
+    const subToDelete = submissions.find(s => s.id === id);
+    if (subToDelete?.status === 'Reviewed') {
+      toast({
+        title: "Action Denied",
+        description: "Reviewed assignments cannot be deleted.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSubmissions(submissions.filter(s => s.id !== id));
+    toast({
+      title: "Submission Deleted",
+      description: "The assignment has been removed from your history.",
+    });
+  };
+
+  const handlePreviewSubmission = (fileName: string) => {
+    toast({
+      title: "Previewing Document",
+      description: `Generating secure preview for ${fileName}...`,
+    });
   };
 
   if (!mounted) return null;
@@ -243,23 +280,48 @@ export default function StudentDashboard() {
                 <div className="divide-y">
                   {submissions.length > 0 ? (
                     submissions.map((sub) => (
-                      <div key={sub.id} className="p-4 flex items-center justify-between hover:bg-muted/20 transition-colors">
-                        <div className="flex items-center space-x-4">
+                      <div key={sub.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center space-x-4 flex-1">
                           <div className="bg-primary/10 p-2 rounded-lg text-primary">
-                            <FileCheck className="w-5 h-5" />
+                            <FileText className="w-6 h-6" />
                           </div>
-                          <div>
-                            <p className="font-semibold">{sub.subject}</p>
-                            <p className="text-sm text-muted-foreground">{sub.fileName}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold truncate">{sub.subject}</p>
+                            <p className="text-xs text-muted-foreground truncate">{sub.fileName}</p>
+                            <div className="flex items-center text-[10px] text-muted-foreground mt-1">
+                              <Clock className="w-3 h-3 mr-1" /> {sub.date}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="flex items-center text-xs text-muted-foreground mb-1">
-                            <Clock className="w-3 h-3 mr-1" /> {sub.date}
-                          </div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${sub.status === 'Reviewed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${sub.status === 'Reviewed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                             {sub.status}
                           </span>
+                          
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => handlePreviewSubmission(sub.fileName)}
+                              title="Preview Document"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            
+                            {sub.status !== 'Reviewed' && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteSubmission(sub.id)}
+                                title="Delete Submission"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))

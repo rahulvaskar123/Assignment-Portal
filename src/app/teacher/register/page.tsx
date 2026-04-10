@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -28,11 +29,22 @@ export default function TeacherRegister() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email && password && subject && year) {
+      // Create session
       localStorage.setItem('userType', 'teacher');
       localStorage.setItem('userName', name);
       localStorage.setItem('teacherSubject', subject);
       localStorage.setItem('teacherYear', year);
       
+      // Save to global simulated DB so they can login later
+      const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
+      const newTeacher = { name, email, password, subject, year };
+      
+      // Check if already exists
+      const existing = teachers.find((t: any) => t.email === email);
+      if (!existing) {
+        localStorage.setItem('all_global_teachers', JSON.stringify([...teachers, newTeacher]));
+      }
+
       toast({
         title: "Teacher Registration Successful",
         description: `Welcome, Prof. ${name}! Your classroom for ${subject} (${year}) is ready.`,
@@ -45,9 +57,9 @@ export default function TeacherRegister() {
   if (!mounted) return null;
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-6">
+    <div className="flex items-center justify-center min-h-screen p-6 bg-slate-50">
       <div className="w-full max-w-lg space-y-4">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors">
+        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-accent mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back to Home
         </Link>
@@ -115,7 +127,7 @@ export default function TeacherRegister() {
             </form>
           </CardContent>
           <CardFooter className="text-center text-sm text-muted-foreground flex justify-center">
-            Already have a classroom? <Link href="/teacher/dashboard" className="text-accent font-semibold hover:underline ml-1">Sign In</Link>
+            Already have a classroom? <Link href="/teacher/login" className="text-accent font-semibold hover:underline ml-1">Sign In</Link>
           </CardFooter>
         </Card>
       </div>

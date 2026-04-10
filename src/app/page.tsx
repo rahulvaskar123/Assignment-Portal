@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -56,11 +57,18 @@ export default function LandingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col space-y-4 pb-8">
-            <Link href="/teacher/register" className="w-full">
-              <Button size="lg" variant="outline" className="w-full text-lg h-14 rounded-xl border-accent text-accent hover:bg-accent hover:text-white transition-colors">
-                Setup Teacher Profile
-              </Button>
-            </Link>
+            <div className="grid grid-cols-2 gap-4">
+              <Link href="/teacher/login" className="w-full">
+                <Button size="lg" className="w-full text-lg h-14 rounded-xl bg-accent hover:bg-accent/90">
+                  Login
+                </Button>
+              </Link>
+              <Link href="/teacher/register" className="w-full">
+                <Button size="lg" variant="outline" className="w-full text-lg h-14 rounded-xl border-accent text-accent hover:bg-accent hover:text-white transition-colors">
+                  Register
+                </Button>
+              </Link>
+            </div>
           </CardContent>
           <div className="h-2 bg-accent" />
         </Card>

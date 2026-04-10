@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type Submission = {
   id: string;
+  assignmentId?: string;
   subject: string;
   fileName: string;
   date: string;
@@ -89,15 +90,7 @@ export default function StudentDashboard() {
       
       // Load submissions
       const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
-      if (storedSubmissions.length === 0) {
-        // Initial mock if none exist
-        const mockSub: Submission[] = [
-          { id: '1', subject: 'Cloud Computing', fileName: 'aws_arch_assignment.pdf', date: '2024-05-01', status: 'Reviewed' },
-        ];
-        setSubmissions(mockSub);
-      } else {
-        setSubmissions(storedSubmissions);
-      }
+      setSubmissions(storedSubmissions);
 
       // Load assignments from simulated global storage
       const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
@@ -147,6 +140,7 @@ export default function StudentDashboard() {
       const previewUrl = URL.createObjectURL(file);
       const newSubmission: Submission = {
         id: Math.random().toString(36).substr(2, 9),
+        assignmentId: selectedAssignmentId,
         subject: selectedSubject,
         fileName: file.name,
         date: new Date().toISOString().split('T')[0],
@@ -157,6 +151,13 @@ export default function StudentDashboard() {
       const updatedSubmissions = [newSubmission, ...submissions];
       setSubmissions(updatedSubmissions);
       localStorage.setItem(`submissions_${userId}`, JSON.stringify(updatedSubmissions));
+
+      // Also update a global-like store for teacher visibility (simulation)
+      const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
+      localStorage.setItem('all_global_submissions', JSON.stringify([
+        { ...newSubmission, studentId: userId, studentName: userName },
+        ...allSubmissions
+      ]));
 
       setIsUploading(false);
       toast({
@@ -173,7 +174,7 @@ export default function StudentDashboard() {
   };
 
   const getAssignmentStatus = (assignment: Assignment) => {
-    const isCompleted = submissions.some(s => s.subject === assignment.subject && (s.fileName.toLowerCase().includes(assignment.title.toLowerCase()) || s.date >= '2024-01-01'));
+    const isCompleted = submissions.some(s => s.assignmentId === assignment.id || (s.subject === assignment.subject && s.fileName.toLowerCase().includes(assignment.title.toLowerCase())));
     const isPastDue = new Date(assignment.dueDate) < new Date();
     
     if (isCompleted) return 'Completed';
@@ -198,6 +199,11 @@ export default function StudentDashboard() {
     const updated = submissions.filter(s => s.id !== id);
     setSubmissions(updated);
     localStorage.setItem(`submissions_${userId}`, JSON.stringify(updated));
+    
+    // Update global store too
+    const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
+    localStorage.setItem('all_global_submissions', JSON.stringify(allSubmissions.filter((s: any) => s.id !== id)));
+
     toast({ title: "Submission Deleted", description: "The assignment has been removed." });
   };
 
@@ -233,7 +239,7 @@ export default function StudentDashboard() {
                       <BookOpen className="w-5 h-5 text-primary opacity-50" />
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="text-xs text-muted-foreground">3rd Year • {subjectAssignments.length} Assignments Assigned</p>
+                      <p className="text-xs text-muted-foreground">Academic Year • {subjectAssignments.length} Assignments</p>
                       
                       <div className="space-y-2">
                         {subjectAssignments.length > 0 ? (

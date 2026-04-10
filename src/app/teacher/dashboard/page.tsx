@@ -5,20 +5,41 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Download, LogOut, RefreshCw, FileText, Users, CalendarDays, PlusCircle, Bell } from 'lucide-react';
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from "@/components/ui/accordion";
+import { 
+  Download, 
+  LogOut, 
+  RefreshCw, 
+  FileText, 
+  Users, 
+  CalendarDays, 
+  PlusCircle, 
+  Bell,
+  User,
+  Clock,
+  ExternalLink
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Submission = {
   id: string;
   studentId: string;
+  studentName?: string;
+  assignmentId?: string;
   subject: string;
   fileName: string;
-  uploadTime: string;
+  date: string;
+  fileUrl?: string;
 };
 
 type Assignment = {
@@ -30,11 +51,13 @@ type Assignment = {
   dueDate: string;
 };
 
+const ENROLLED_STUDENTS = 67;
+
 export default function TeacherDashboard() {
   const [userName, setUserName] = useState('');
   const [teacherSubject, setTeacherSubject] = useState('');
   const [teacherYear, setTeacherYear] = useState('');
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -62,28 +85,35 @@ export default function TeacherDashboard() {
       setTeacherSubject(storedSubject || 'Unassigned');
       setTeacherYear(storedYear || 'General');
       
-      // Load mock submissions
-      setSubmissions([
-        { id: '1', studentId: 'STU9012', subject: storedSubject || 'Cloud Computing', fileName: 'Final_Project_V1.pdf', uploadTime: '2024-05-10 14:20' },
-        { id: '2', studentId: 'STU4567', subject: storedSubject || 'Cloud Computing', fileName: 'Architecture_Diagram.zip', uploadTime: '2024-05-11 09:15' },
-      ]);
-
-      // Load assignments from localStorage
-      const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-      setAssignments(storedAssignments.filter((a: Assignment) => a.subject === storedSubject));
+      loadData(storedSubject || '');
     }
   }, [router]);
+
+  const loadData = (subject: string) => {
+    // Load assignments
+    const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+    setAssignments(storedAssignments.filter((a: Assignment) => a.subject === subject));
+
+    // Load submissions from global simulation
+    const storedSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
+    setAllSubmissions(storedSubmissions.filter((s: Submission) => s.subject === subject));
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     router.push('/');
   };
 
-  const handleDownload = (fileName: string) => {
-    toast({
-      title: "Downloading File",
-      description: `Opening secure link for ${fileName}`,
-    });
+  const handleDownload = (fileUrl?: string) => {
+    if (fileUrl) {
+      window.open(fileUrl, '_blank');
+    } else {
+      toast({
+        title: "Download Unavailable",
+        description: "Source file not found in simulated storage.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handlePostAssignment = (e: React.FormEvent) => {
@@ -99,11 +129,10 @@ export default function TeacherDashboard() {
       dueDate: newDueDate,
     };
 
-    const updatedAssignments = [...assignments, assignment];
     const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
     localStorage.setItem('assignments', JSON.stringify([...allAssignments, assignment]));
     
-    setAssignments(updatedAssignments);
+    setAssignments(prev => [...prev, assignment]);
     setIsDialogOpen(false);
     setNewTitle('');
     setNewDesc('');
@@ -118,6 +147,7 @@ export default function TeacherDashboard() {
   const refreshSubmissions = () => {
     setIsLoading(true);
     setTimeout(() => {
+      loadData(teacherSubject);
       setIsLoading(false);
       toast({ title: "Updated", description: "Latest student submissions fetched." });
     }, 1000);
@@ -180,7 +210,7 @@ export default function TeacherDashboard() {
           <Card className="bg-card shadow-sm border-l-4 border-l-accent">
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center"><Users className="w-4 h-4 mr-1" /> Enrolled Students</CardDescription>
-              <CardTitle className="text-4xl font-bold text-accent">24</CardTitle>
+              <CardTitle className="text-4xl font-bold text-accent">{ENROLLED_STUDENTS}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="bg-card shadow-sm border-l-4 border-l-primary">
@@ -191,63 +221,98 @@ export default function TeacherDashboard() {
           </Card>
           <Card className="bg-card shadow-sm border-l-4 border-l-green-500">
             <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><Bell className="w-4 h-4 mr-1" /> Active Tasks</CardDescription>
+              <CardDescription className="flex items-center"><Bell className="w-4 h-4 mr-1" /> Active Assignments</CardDescription>
               <CardTitle className="text-4xl font-bold text-green-500">{assignments.length}</CardTitle>
             </CardHeader>
           </Card>
         </div>
 
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800">Classroom Feed</h2>
+          <h2 className="text-xl font-bold text-slate-800">Assignment Monitoring</h2>
           <Button variant="outline" size="sm" onClick={refreshSubmissions} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            Refresh Feed
           </Button>
         </div>
 
-        <Card className="shadow-sm border-none bg-white">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead className="font-semibold">Student ID</TableHead>
-                <TableHead className="font-semibold">Document</TableHead>
-                <TableHead className="font-semibold">Timestamp</TableHead>
-                <TableHead className="text-right font-semibold">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {submissions.length > 0 ? (
-                submissions.map((sub) => (
-                  <TableRow key={sub.id} className="hover:bg-slate-50 transition-colors">
-                    <TableCell className="font-medium text-accent">{sub.studentId}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">
-                      <span className="text-slate-700">{sub.fileName}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-500">
-                      {sub.uploadTime}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-accent hover:bg-accent/10"
-                        onClick={() => handleDownload(sub.fileName)}
-                      >
-                        <Download className="w-4 h-4 mr-1" /> Review
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center text-slate-400">
-                    No submissions from students yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+        <div className="space-y-4">
+          {assignments.length > 0 ? (
+            assignments.map((assignment) => {
+              const assignmentSubmissions = allSubmissions.filter(s => s.assignmentId === assignment.id || s.fileName.toLowerCase().includes(assignment.title.toLowerCase()));
+              const submissionPercentage = Math.round((assignmentSubmissions.length / ENROLLED_STUDENTS) * 100);
+
+              return (
+                <Card key={assignment.id} className="overflow-hidden border-none shadow-sm">
+                  <div className="bg-primary/5 p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-bold text-slate-800">{assignment.title}</h3>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> Due: {assignment.dueDate}</span>
+                        <span className="flex items-center"><Users className="w-3 h-3 mr-1" /> {assignmentSubmissions.length} / {ENROLLED_STUDENTS} Submitted</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-white">{submissionPercentage}% Turnover</Badge>
+                    </div>
+                  </div>
+                  
+                  <CardContent className="p-0">
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="submissions" className="border-none">
+                        <AccordionTrigger className="px-6 py-3 hover:no-underline text-sm font-medium text-primary">
+                          View Student Submissions
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-6 pt-0">
+                          {assignmentSubmissions.length > 0 ? (
+                            <div className="divide-y border rounded-lg overflow-hidden bg-slate-50/30">
+                              {assignmentSubmissions.map((sub) => (
+                                <div key={sub.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <div className="bg-white p-2 rounded-full border shadow-sm">
+                                      <User className="w-4 h-4 text-accent" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-slate-700">{sub.studentName || sub.studentId}</p>
+                                      <p className="text-[10px] text-muted-foreground font-mono">{sub.studentId}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 px-4 min-w-0">
+                                    <p className="text-xs font-medium truncate text-slate-600">{sub.fileName}</p>
+                                    <p className="text-[10px] text-muted-foreground">Submitted on {sub.date}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-primary hover:bg-primary/10 h-8"
+                                      onClick={() => handleDownload(sub.fileUrl)}
+                                    >
+                                      <ExternalLink className="w-4 h-4 mr-1" /> Review
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center text-sm text-muted-foreground italic border-2 border-dashed rounded-lg">
+                              No submissions received for this assignment yet.
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <div className="text-center py-20 bg-white rounded-xl shadow-sm border">
+              <PlusCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground font-medium">You haven't posted any assignments yet.</p>
+              <p className="text-sm text-muted-foreground/60">Click 'Post Assignment' to get started with your classroom.</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

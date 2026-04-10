@@ -21,7 +21,12 @@ export default function TeacherLogin() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // If already logged in, redirect to dashboard
+    const userType = localStorage.getItem('userType');
+    if (userType === 'teacher') {
+      router.push('/teacher/dashboard');
+    }
+  }, [router]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +35,10 @@ export default function TeacherLogin() {
     // Simulate database lookup from our "global" registry
     setTimeout(() => {
       const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
-      const teacher = teachers.find((t: any) => t.email === email && t.password === password);
+      const teacher = teachers.find((t: any) => 
+        t.email.toLowerCase().trim() === email.toLowerCase().trim() && 
+        t.password === password
+      );
 
       if (teacher) {
         localStorage.setItem('userType', 'teacher');

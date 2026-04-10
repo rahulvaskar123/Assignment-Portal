@@ -29,21 +29,27 @@ export default function TeacherRegister() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email && password && subject && year) {
+      const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
+      
+      // Check if already exists
+      const existing = teachers.find((t: any) => t.email.toLowerCase() === email.toLowerCase());
+      if (existing) {
+        toast({
+          title: "Registration Failed",
+          description: "An account with this email already exists. Please log in.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const newTeacher = { name, email, password, subject, year };
+      localStorage.setItem('all_global_teachers', JSON.stringify([...teachers, newTeacher]));
+
       // Create session
       localStorage.setItem('userType', 'teacher');
       localStorage.setItem('userName', name);
       localStorage.setItem('teacherSubject', subject);
       localStorage.setItem('teacherYear', year);
-      
-      // Save to global simulated DB so they can login later
-      const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
-      const newTeacher = { name, email, password, subject, year };
-      
-      // Check if already exists
-      const existing = teachers.find((t: any) => t.email === email);
-      if (!existing) {
-        localStorage.setItem('all_global_teachers', JSON.stringify([...teachers, newTeacher]));
-      }
 
       toast({
         title: "Teacher Registration Successful",

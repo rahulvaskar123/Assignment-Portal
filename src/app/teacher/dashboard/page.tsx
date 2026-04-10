@@ -89,7 +89,7 @@ export default function TeacherDashboard() {
     const storedYear = localStorage.getItem('teacherYear');
     
     if (userType !== 'teacher') {
-      router.push('/teacher/register');
+      router.push('/teacher/login');
     } else {
       setUserName(storedName || 'Professor');
       setTeacherSubject(storedSubject || 'Unassigned');

@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { GraduationCap, UserCog, UploadCloud } from 'lucide-react';
+import { GraduationCap, UserCog, NotebookPen } from 'lucide-react';
 
 export default function LandingPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 space-y-12">
       <div className="text-center space-y-4 max-w-2xl">
         <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full text-primary mb-4">
-          <UploadCloud className="w-12 h-12" />
+          <NotebookPen className="w-12 h-12" />
         </div>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-primary font-headline">
           Assignment Portal
@@ -53,10 +53,6 @@ export default function LandingPage() {
           </CardContent>
         </Card>
       </div>
-
-      <footer className="text-sm text-muted-foreground mt-12">
-        © {new Date().getFullYear()} Assignment Submission Portal. Powered by AWS S3.
-      </footer>
     </div>
   );
 }

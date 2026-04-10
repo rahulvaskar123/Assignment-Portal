@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -32,7 +31,7 @@ import {
   Eye,
   UploadCloud,
   Loader2,
-  CloudCheck
+  Cloud
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -219,7 +218,7 @@ export default function TeacherDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="outline" className="text-white border-white/20 bg-white/10">
-              <CloudCheck className="w-3 h-3 mr-1" /> AWS Live
+              <Cloud className="w-3 h-3 mr-1" /> AWS Live
             </Badge>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>

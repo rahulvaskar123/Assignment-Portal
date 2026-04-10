@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -28,7 +27,7 @@ import {
   RefreshCw,
   FileDown,
   ChevronRight,
-  CloudCheck
+  Cloud
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -261,7 +260,7 @@ export default function StudentDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-white text-[10px] py-1 text-green-600 border-green-200">
-              <CloudCheck className="w-3 h-3 mr-1" /> Storage: AWS S3 Live
+              <Cloud className="w-3 h-3 mr-1" /> Storage: AWS S3 Live
             </Badge>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
               <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync

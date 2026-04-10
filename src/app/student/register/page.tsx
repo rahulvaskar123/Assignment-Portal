@@ -8,18 +8,28 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { GraduationCap, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
-export default function StudentLogin() {
+export default function StudentRegister() {
+  const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (studentId && password) {
-      // Basic simulation of session
+    if (name && studentId && password) {
+      // Simulate account creation
       localStorage.setItem('userType', 'student');
       localStorage.setItem('userId', studentId);
+      localStorage.setItem('userName', name);
+      
+      toast({
+        title: "Registration Successful",
+        description: "Welcome to the Student Portal!",
+      });
+      
       router.push('/student/upload');
     }
   };
@@ -27,21 +37,31 @@ export default function StudentLogin() {
   return (
     <div className="flex items-center justify-center min-h-screen p-6">
       <div className="w-full max-w-md space-y-4">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors">
+        <Link href="/student/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Home
+          Back to Login
         </Link>
         
-        <Card className="shadow-xl">
+        <Card className="shadow-xl border-t-4 border-t-primary">
           <CardHeader className="space-y-1 text-center">
             <GraduationCap className="w-10 h-10 mx-auto text-primary mb-2" />
-            <CardTitle className="text-2xl font-headline">Student Login</CardTitle>
+            <CardTitle className="text-2xl font-headline">Student Registration</CardTitle>
             <CardDescription>
-              Enter your student ID to access the upload portal
+              Create your account to start submitting assignments
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input 
+                  id="name" 
+                  placeholder="John Doe" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required 
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="studentId">Student ID</Label>
                 <Input 
@@ -64,14 +84,12 @@ export default function StudentLogin() {
                 />
               </div>
               <Button type="submit" className="w-full mt-2">
-                Sign In
+                Create Account
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
-            <div>
-              Don't have an account? <Link href="/student/register" className="text-primary font-semibold hover:underline">Register now</Link>
-            </div>
+          <CardFooter className="text-center text-sm text-muted-foreground flex justify-center">
+            Already have an account? <Link href="/student/login" className="text-primary font-semibold hover:underline ml-1">Sign In</Link>
           </CardFooter>
         </Card>
       </div>

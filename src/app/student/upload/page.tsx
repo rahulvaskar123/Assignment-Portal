@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, FileCheck, Loader2, AlertCircle, LogOut } from 'lucide-react';
+import { UploadCloud, FileCheck, Loader2, AlertCircle, LogOut, ArrowLeft } from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
 
@@ -112,7 +113,7 @@ export default function StudentUpload() {
 
   if (isExpired) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-6">
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 space-y-6">
         <Alert variant="destructive" className="max-w-md">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Submission deadline has passed</AlertTitle>
@@ -120,6 +121,18 @@ export default function StudentUpload() {
             The deadline for this assignment was {DEADLINE.toLocaleDateString()}. Submissions are now closed.
           </AlertDescription>
         </Alert>
+        <div className="flex gap-4">
+          <Link href="/">
+            <Button variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+          <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
       </div>
     );
   }

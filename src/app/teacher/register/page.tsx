@@ -29,10 +29,11 @@ export default function TeacherRegister() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email && password && subject && year) {
+      const normalizedEmail = email.toLowerCase().trim();
       const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
       
       // Check if already exists
-      const existing = teachers.find((t: any) => t.email.toLowerCase() === email.toLowerCase());
+      const existing = teachers.find((t: any) => t.email.toLowerCase().trim() === normalizedEmail);
       if (existing) {
         toast({
           title: "Registration Failed",
@@ -42,7 +43,7 @@ export default function TeacherRegister() {
         return;
       }
 
-      const newTeacher = { name, email, password, subject, year };
+      const newTeacher = { name, email: normalizedEmail, password, subject, year };
       localStorage.setItem('all_global_teachers', JSON.stringify([...teachers, newTeacher]));
 
       // Create session

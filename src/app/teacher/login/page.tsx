@@ -32,11 +32,13 @@ export default function TeacherLogin() {
     e.preventDefault();
     setIsLoading(true);
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Simulate database lookup from our "global" registry
     setTimeout(() => {
       const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
       const teacher = teachers.find((t: any) => 
-        t.email.toLowerCase().trim() === email.toLowerCase().trim() && 
+        t.email.toLowerCase().trim() === normalizedEmail && 
         t.password === password
       );
 

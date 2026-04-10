@@ -1,7 +1,8 @@
+
 /**
  * AWS Lambda Function
  * Trigger: S3 ObjectCreated
- * Purpose: Extract metadata from the uploaded filename and log it.
+ * Purpose: Extract metadata from the uploaded filename and log it for university records.
  */
 exports.handler = async (event) => {
     // Get bucket name and file key from the event
@@ -11,6 +12,7 @@ exports.handler = async (event) => {
     console.log(`New assignment detected in S3: ${key} (Bucket: ${bucket})`);
     
     // Naming Convention: studentID_subject_timestamp_originalfilename.ext
+    // Expected format: STU12345_Blockchain_1623456789_myreport.pdf
     const parts = key.split('_');
     
     if (parts.length >= 4) {
@@ -21,12 +23,12 @@ exports.handler = async (event) => {
             fileName: parts.slice(3).join('_')
         };
         
-        console.log('--- Submission Metadata ---');
+        console.log('--- Submission Metadata Extracted ---');
         console.log(`Student ID: ${metadata.studentId}`);
         console.log(`Subject: ${metadata.subject}`);
         console.log(`Time of Upload: ${metadata.timestamp}`);
-        console.log(`Original File: ${metadata.fileName}`);
-        console.log('---------------------------');
+        console.log(`Original File Name: ${metadata.fileName}`);
+        console.log('------------------------------------');
     } else {
         console.log('File uploaded does not follow naming convention, skipping metadata extraction.');
     }

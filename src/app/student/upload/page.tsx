@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -19,13 +18,10 @@ import {
 } from "@/components/ui/accordion";
 import { 
   UploadCloud, 
-  FileCheck, 
   Loader2, 
-  AlertCircle, 
   LogOut, 
   BookOpen, 
   Clock, 
-  CheckCircle2, 
   Trash2, 
   Eye,
   FileText,
@@ -33,7 +29,6 @@ import {
   FileDown,
   ChevronRight
 } from 'lucide-react';
-import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
 
 type Submission = {
@@ -71,10 +66,8 @@ export default function StudentDashboard() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<{ isAligned: boolean; suggestion: string } | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -94,7 +87,7 @@ export default function StudentDashboard() {
     }
 
     setUserId(storedId);
-    if (storedName) setUserName(storedName);
+    setUserName(storedName || storedId);
     
     // Load submissions
     const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
@@ -140,26 +133,6 @@ export default function StudentDashboard() {
     }, 100);
   };
 
-  const verifyWithAI = async () => {
-    if (!selectedSubject || !description) return;
-    setIsVerifying(true);
-    try {
-      const result = await assignmentVerificationAssistant({
-        subject: selectedSubject as any,
-        freeTextDescription: description
-      });
-      setAiFeedback(result);
-    } catch (error) {
-      toast({
-        title: "AI Verification Error",
-        description: "Could not verify assignment details at this time.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -169,7 +142,15 @@ export default function StudentDashboard() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !selectedSubject || !userName) return;
+    // userName can be userId fallback set in loadData
+    if (!file || !selectedSubject || !userId) {
+      toast({
+        title: "Submission Failed",
+        description: "Please ensure all fields are filled and a file is selected.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsUploading(true);
     
@@ -191,7 +172,7 @@ export default function StudentDashboard() {
 
       const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
       localStorage.setItem('all_global_submissions', JSON.stringify([
-        { ...newSubmission, studentId: userId, studentName: userName },
+        { ...newSubmission, studentId: userId, studentName: userName || userId },
         ...allSubmissions
       ]));
 
@@ -202,7 +183,6 @@ export default function StudentDashboard() {
       });
       
       setFile(null);
-      setAiFeedback(null);
       setDescription('');
       setSelectedSubject('');
       setSelectedAssignmentId('');
@@ -346,23 +326,9 @@ export default function StudentDashboard() {
                   <CardContent className="pt-6">
                     <form onSubmit={handleUpload} className="space-y-6">
                       <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <Label htmlFor="description">Brief Topic Summary (AI Alignment Check)</Label>
-                          <Button type="button" variant="link" size="sm" className="text-accent h-auto p-0" onClick={verifyWithAI} disabled={isVerifying || !description}>
-                            {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />} Check Alignment
-                          </Button>
-                        </div>
-                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Explain your assignment topic in 1-2 sentences..." className="min-h-[80px]" />
+                        <Label htmlFor="description">Submission Notes</Label>
+                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide any additional notes about your submission..." className="min-h-[80px]" />
                       </div>
-
-                      {aiFeedback && (
-                        <Alert className={aiFeedback.isAligned ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
-                          <AlertTitle className="flex items-center text-sm">
-                            {aiFeedback.isAligned ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />} AI Feedback
-                          </AlertTitle>
-                          <AlertDescription className="text-xs mt-1">{aiFeedback.suggestion}</AlertDescription>
-                        </Alert>
-                      )}
 
                       <div className="space-y-3">
                         <Label>File Attachment</Label>

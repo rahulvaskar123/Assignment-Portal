@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,8 @@ import {
   Eye,
   FileText,
   RefreshCw,
-  FileDown
+  FileDown,
+  ChevronRight
 } from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
@@ -77,6 +78,8 @@ export default function StudentDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [mounted, setMounted] = useState(false);
+  
+  const formRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -124,6 +127,17 @@ export default function StudentDashboard() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     router.push('/');
+  };
+
+  const handleOpenAssignment = (subj: string, assignment: Assignment) => {
+    setSelectedSubject(subj);
+    setSelectedAssignmentId(assignment.id);
+    setDescription(`Task: ${assignment.title}`);
+    
+    // Scroll to form after state update
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const verifyWithAI = async () => {
@@ -228,6 +242,8 @@ export default function StudentDashboard() {
     toast({ title: "Submission Deleted", description: "The assignment has been removed." });
   };
 
+  const activeAssignment = assignments.find(a => a.id === selectedAssignmentId);
+
   if (!mounted) return null;
 
   return (
@@ -282,21 +298,18 @@ export default function StudentDashboard() {
                                   </div>
                                   <div className="flex gap-2">
                                     {a.fileUrl && (
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => window.open(a.fileUrl, '_blank')}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="Download Reference" onClick={() => window.open(a.fileUrl, '_blank')}>
                                         <FileDown className="w-4 h-4" />
                                       </Button>
                                     )}
                                     <Button 
                                       size="sm" 
-                                      variant="ghost" 
-                                      className="h-8 text-[10px] font-bold"
-                                      onClick={() => {
-                                        setSelectedSubject(s);
-                                        setSelectedAssignmentId(a.id);
-                                        setDescription(`Assignment: ${a.title}`);
-                                      }}
+                                      variant="secondary" 
+                                      className="h-8 text-[10px] font-bold bg-white/50 hover:bg-white"
+                                      onClick={() => handleOpenAssignment(s, a)}
                                     >
                                       {status === 'Completed' ? 'Resubmit' : 'Open'}
+                                      <ChevronRight className="w-3 h-3 ml-1" />
                                     </Button>
                                   </div>
                                 </div>
@@ -319,58 +332,60 @@ export default function StudentDashboard() {
             </div>
 
             {selectedSubject && (
-              <Card className="shadow-lg border-primary/20 animate-in fade-in slide-in-from-bottom-4">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-primary text-xl">
-                    <UploadCloud className="w-5 h-5 mr-2" />
-                    Upload Submission: {selectedSubject}
-                  </CardTitle>
-                  <CardDescription>
-                    {assignments.find(a => a.id === selectedAssignmentId)?.description || "Complete your task and upload the file below."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleUpload} className="space-y-6">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="description">Brief Topic Summary (AI Alignment Check)</Label>
-                        <Button type="button" variant="link" size="sm" className="text-accent h-auto p-0" onClick={verifyWithAI} disabled={isVerifying || !description}>
-                          {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />} Check Alignment
-                        </Button>
+              <div ref={formRef} className="pt-4 scroll-mt-6">
+                <Card className="shadow-lg border-primary/30 border-2 animate-in fade-in slide-in-from-bottom-4">
+                  <CardHeader className="bg-primary/5 border-b">
+                    <CardTitle className="flex items-center text-primary text-xl">
+                      <UploadCloud className="w-5 h-5 mr-2" />
+                      Submit: {activeAssignment?.title || selectedSubject}
+                    </CardTitle>
+                    <CardDescription className="text-sm font-medium text-slate-700 mt-2">
+                      {activeAssignment?.description || "Complete your task and upload the file below."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <form onSubmit={handleUpload} className="space-y-6">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="description">Brief Topic Summary (AI Alignment Check)</Label>
+                          <Button type="button" variant="link" size="sm" className="text-accent h-auto p-0" onClick={verifyWithAI} disabled={isVerifying || !description}>
+                            {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />} Check Alignment
+                          </Button>
+                        </div>
+                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Explain your assignment topic in 1-2 sentences..." className="min-h-[80px]" />
                       </div>
-                      <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Explain your assignment topic in 1-2 sentences..." className="min-h-[80px]" />
-                    </div>
 
-                    {aiFeedback && (
-                      <Alert className={aiFeedback.isAligned ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
-                        <AlertTitle className="flex items-center text-sm">
-                          {aiFeedback.isAligned ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />} AI Feedback
-                        </AlertTitle>
-                        <AlertDescription className="text-xs mt-1">{aiFeedback.suggestion}</AlertDescription>
-                      </Alert>
-                    )}
+                      {aiFeedback && (
+                        <Alert className={aiFeedback.isAligned ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
+                          <AlertTitle className="flex items-center text-sm">
+                            {aiFeedback.isAligned ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />} AI Feedback
+                          </AlertTitle>
+                          <AlertDescription className="text-xs mt-1">{aiFeedback.suggestion}</AlertDescription>
+                        </Alert>
+                      )}
 
-                    <div className="space-y-3">
-                      <Label>File Attachment</Label>
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
-                        <UploadCloud className="w-8 h-8 text-muted-foreground mb-2" />
-                        <p className="text-xs text-muted-foreground">{file ? file.name : "Select PDF, ZIP, or DOCX"}</p>
-                        <input type="file" className="hidden" onChange={handleFileChange} required />
-                      </label>
-                    </div>
+                      <div className="space-y-3">
+                        <Label>File Attachment</Label>
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
+                          <UploadCloud className="w-8 h-8 text-muted-foreground mb-2" />
+                          <p className="text-xs text-muted-foreground">{file ? file.name : "Select PDF, ZIP, or DOCX"}</p>
+                          <input type="file" className="hidden" onChange={handleFileChange} required />
+                        </label>
+                      </div>
 
-                    <div className="flex gap-4">
-                      <Button type="submit" className="flex-1" disabled={isUploading || !file}>
-                        {isUploading ? "Processing..." : "Submit to Classroom"}
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => {
-                        setSelectedSubject('');
-                        setSelectedAssignmentId('');
-                      }}>Cancel</Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
+                      <div className="flex gap-4">
+                        <Button type="submit" className="flex-1" disabled={isUploading || !file}>
+                          {isUploading ? "Processing..." : "Submit to Classroom"}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => {
+                          setSelectedSubject('');
+                          setSelectedAssignmentId('');
+                        }}>Cancel</Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </TabsContent>
 

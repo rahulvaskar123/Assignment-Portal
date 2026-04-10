@@ -10,24 +10,39 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, FileCheck, Loader2, AlertCircle, LogOut, ArrowLeft } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UploadCloud, FileCheck, Loader2, AlertCircle, LogOut, ArrowLeft, BookOpen, Clock, CheckCircle2 } from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
 
-export default function StudentUpload() {
+type Submission = {
+  id: string;
+  subject: string;
+  fileName: string;
+  date: string;
+  status: 'Submitted' | 'Reviewed';
+};
+
+const SUBJECTS = [
+  "Big Data Analytics",
+  "Blockchain",
+  "Cloud Computing",
+  "Digital Business Management"
+];
+
+export default function StudentDashboard() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
-  const [subject, setSubject] = useState<'Cloud Computing' | 'Data Science' | 'Web Development' | ''>('');
+  const [subject, setSubject] = useState<string>('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<{ isAligned: boolean; suggestion: string } | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-
-  const DEADLINE = new Date('2025-12-31T23:59:59');
 
   useEffect(() => {
     setMounted(true);
@@ -40,6 +55,13 @@ export default function StudentUpload() {
     } else {
       setUserId(storedId);
       if (storedName) setUserName(storedName);
+      
+      // Load mock submissions
+      const mockSubmissions: Submission[] = [
+        { id: '1', subject: 'Cloud Computing', fileName: 'aws_arch_assignment.pdf', date: '2024-05-01', status: 'Reviewed' },
+        { id: '2', subject: 'Blockchain', fileName: 'smart_contract_report.docx', date: '2024-05-08', status: 'Submitted' },
+      ];
+      setSubmissions(mockSubmissions);
     }
   }, [router]);
 
@@ -71,18 +93,6 @@ export default function StudentUpload() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      const allowedExts = ['pdf', 'docx', 'zip'];
-      const ext = selectedFile.name.split('.').pop()?.toLowerCase();
-      if (!ext || !allowedExts.includes(ext)) {
-        toast({ title: "Invalid File Type", description: "Only PDF, DOCX, and ZIP files are allowed.", variant: "destructive" });
-        e.target.value = '';
-        return;
-      }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast({ title: "File Too Large", description: "Maximum file size is 10MB.", variant: "destructive" });
-        e.target.value = '';
-        return;
-      }
       setFile(selectedFile);
     }
   };
@@ -93,10 +103,18 @@ export default function StudentUpload() {
 
     setIsUploading(true);
     setTimeout(() => {
+      const newSubmission: Submission = {
+        id: Math.random().toString(36).substr(2, 9),
+        subject,
+        fileName: file.name,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Submitted'
+      };
+      setSubmissions([newSubmission, ...submissions]);
       setIsUploading(false);
       toast({
         title: "Submission Successful",
-        description: "Your assignment has been securely uploaded to S3.",
+        description: "Your assignment has been uploaded to your classroom.",
       });
       setFile(null);
       setAiFeedback(null);
@@ -105,137 +123,156 @@ export default function StudentUpload() {
     }, 2000);
   };
 
-  if (!mounted) {
-    return null;
-  }
-
-  const isExpired = new Date() > DEADLINE;
-
-  if (isExpired) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 space-y-6">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Submission deadline has passed</AlertTitle>
-          <AlertDescription>
-            The deadline for this assignment was {DEADLINE.toLocaleDateString()}. Submissions are now closed.
-          </AlertDescription>
-        </Alert>
-        <div className="flex gap-4">
-          <Link href="/">
-            <Button variant="outline">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
-          <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen p-6 md:p-12">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-primary font-headline">Submit Assignment</h1>
-            <p className="text-muted-foreground">Logged in as Student ID: <span className="font-semibold">{userId}</span></p>
+            <h1 className="text-3xl font-bold text-primary font-headline">Student Classroom</h1>
+            <p className="text-muted-foreground">Welcome back, <span className="font-semibold text-primary">{userName || userId}</span></p>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
             <LogOut className="w-4 h-4 mr-2" /> Logout
           </Button>
         </div>
 
-        <Card className="shadow-lg border-none">
-          <CardHeader>
-            <CardTitle>Assignment Details</CardTitle>
-            <CardDescription>Fill in your details and upload your assignment file.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleUpload} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Your Name" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Select value={subject} onValueChange={(v) => setSubject(v as any)} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cloud Computing">Cloud Computing</SelectItem>
-                      <SelectItem value="Data Science">Data Science</SelectItem>
-                      <SelectItem value="Web Development">Web Development</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+        <Tabs defaultValue="classes" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md mb-8">
+            <TabsTrigger value="classes">My Classes</TabsTrigger>
+            <TabsTrigger value="history">Submission History</TabsTrigger>
+          </TabsList>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="description">Short Description (Optional)</Label>
-                  <Button 
-                    type="button" 
-                    variant="link" 
-                    size="sm" 
-                    className="text-accent h-auto p-0"
-                    onClick={verifyWithAI}
-                    disabled={isVerifying || !subject || !description}
-                  >
-                    {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />}
-                    Verify with AI
-                  </Button>
-                </div>
-                <Textarea 
-                  id="description" 
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell us a bit about your project..." 
-                  className="min-h-[100px]"
-                />
-              </div>
+          <TabsContent value="classes" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {SUBJECTS.map((s) => (
+                <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-lg font-bold">{s}</CardTitle>
+                    <BookOpen className="w-5 h-5 text-primary opacity-50" />
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">Class Year: 3rd Year</p>
+                    <Button variant="outline" size="sm" onClick={() => setSubject(s)} className="w-full">
+                      Submit Assignment
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-              {aiFeedback && (
-                <Alert className={aiFeedback.isAligned ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
-                  <AlertTitle className="flex items-center">
-                    {aiFeedback.isAligned ? <FileCheck className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />}
-                    AI Verification Result
-                  </AlertTitle>
-                  <AlertDescription className="text-sm mt-1">
-                    {aiFeedback.suggestion}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-4 pt-4 border-t">
-                <div className="space-y-2">
-                  <Label htmlFor="file">Assignment File (PDF, DOCX, ZIP - Max 10MB)</Label>
-                  <div className="flex items-center justify-center w-full">
-                    <label htmlFor="file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 border-border transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <UploadCloud className="w-10 h-10 text-muted-foreground mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          {file ? <span className="text-primary font-medium">{file.name}</span> : "Click to select or drag and drop"}
-                        </p>
+            {subject && (
+              <Card className="shadow-lg border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-primary">
+                    <UploadCloud className="w-5 h-5 mr-2" />
+                    Submit to {subject}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpload} className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="description">Assignment Overview (AI verified)</Label>
+                        <Button 
+                          type="button" 
+                          variant="link" 
+                          size="sm" 
+                          className="text-accent h-auto p-0"
+                          onClick={verifyWithAI}
+                          disabled={isVerifying || !description}
+                        >
+                          {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />}
+                          Check Alignment
+                        </Button>
                       </div>
-                      <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.docx,.zip" required />
-                    </label>
-                  </div>
-                </div>
+                      <Textarea 
+                        id="description" 
+                        value={description} 
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Briefly describe your assignment topic..." 
+                        className="min-h-[100px]"
+                      />
+                    </div>
 
-                <Button type="submit" size="lg" className="w-full" disabled={isUploading || !file}>
-                  {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</> : "Submit Assignment"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                    {aiFeedback && (
+                      <Alert className={aiFeedback.isAligned ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
+                        <AlertTitle className="flex items-center text-sm">
+                          {aiFeedback.isAligned ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />}
+                          AI Guidance
+                        </AlertTitle>
+                        <AlertDescription className="text-xs mt-1">
+                          {aiFeedback.suggestion}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-4">
+                      <Label>Attachment</Label>
+                      <div className="flex items-center justify-center w-full">
+                        <label htmlFor="file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                            <UploadCloud className="w-8 h-8 text-muted-foreground mb-2" />
+                            <p className="text-xs text-muted-foreground">
+                              {file ? <span className="text-primary font-medium">{file.name}</span> : "PDF, ZIP, or DOCX (Max 10MB)"}
+                            </p>
+                          </div>
+                          <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} required />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <Button type="submit" className="flex-1" disabled={isUploading || !file}>
+                        {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</> : "Post to Classroom"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => { setSubject(''); setFile(null); setAiFeedback(null); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history">
+            <Card>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {submissions.length > 0 ? (
+                    submissions.map((sub) => (
+                      <div key={sub.id} className="p-4 flex items-center justify-between hover:bg-muted/20 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <div className="bg-primary/10 p-2 rounded-lg text-primary">
+                            <FileCheck className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">{sub.subject}</p>
+                            <p className="text-sm text-muted-foreground">{sub.fileName}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center text-xs text-muted-foreground mb-1">
+                            <Clock className="w-3 h-3 mr-1" /> {sub.date}
+                          </div>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${sub.status === 'Reviewed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {sub.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-12 text-center text-muted-foreground">
+                      No assignments submitted yet.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

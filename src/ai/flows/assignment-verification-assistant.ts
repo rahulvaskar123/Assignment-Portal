@@ -1,10 +1,6 @@
 'use server';
 /**
  * @fileOverview An AI assistant that verifies if a student's free-text description aligns with their selected subject.
- *
- * - assignmentVerificationAssistant - A function that handles the assignment detail verification process.
- * - AssignmentVerificationAssistantInput - The input type for the assignmentVerificationAssistant function.
- * - AssignmentVerificationAssistantOutput - The return type for the assignmentVerificationAssistant function.
  */
 
 import {ai} from '@/ai/genkit';
@@ -12,7 +8,7 @@ import {z} from 'genkit';
 
 const AssignmentVerificationAssistantInputSchema = z.object({
   subject: z
-    .enum(['Cloud Computing', 'Data Science', 'Web Development'])
+    .enum(['Big Data Analytics', 'Blockchain', 'Cloud Computing', 'Digital Business Management'])
     .describe('The subject selected by the student.'),
   freeTextDescription: z
     .string()

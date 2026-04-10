@@ -71,6 +71,16 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const loadData = (subject: string) => {
+    // Load assignments from global storage
+    const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+    setAssignments(storedAssignments.filter((a: Assignment) => a.subject === subject));
+
+    // Load submissions from global simulation
+    const storedSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
+    setAllSubmissions(storedSubmissions.filter((s: Submission) => s.subject === subject));
+  };
+
   useEffect(() => {
     setMounted(true);
     const userType = localStorage.getItem('userType');
@@ -89,18 +99,12 @@ export default function TeacherDashboard() {
     }
   }, [router]);
 
-  const loadData = (subject: string) => {
-    // Load assignments
-    const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-    setAssignments(storedAssignments.filter((a: Assignment) => a.subject === subject));
-
-    // Load submissions from global simulation
-    const storedSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
-    setAllSubmissions(storedSubmissions.filter((s: Submission) => s.subject === subject));
-  };
-
   const handleLogout = () => {
-    localStorage.clear();
+    // Selective removal to preserve "global" simulation data
+    localStorage.removeItem('userType');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('teacherSubject');
+    localStorage.removeItem('teacherYear');
     router.push('/');
   };
 

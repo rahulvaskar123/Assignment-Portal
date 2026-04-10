@@ -29,7 +29,7 @@ import {
   Trash2, 
   Eye,
   FileText,
-  Calendar
+  RefreshCw
 } from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
@@ -69,6 +69,7 @@ export default function StudentDashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<{ isAligned: boolean; suggestion: string } | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -76,30 +77,50 @@ export default function StudentDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    setMounted(true);
+  const loadData = () => {
     const storedId = localStorage.getItem('userId');
     const storedName = localStorage.getItem('userName');
     const userType = localStorage.getItem('userType');
     
     if (!storedId || userType !== 'student') {
       router.push('/student/login');
-    } else {
-      setUserId(storedId);
-      if (storedName) setUserName(storedName);
-      
-      // Load submissions
-      const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
-      setSubmissions(storedSubmissions);
-
-      // Load assignments from simulated global storage
-      const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-      setAssignments(allAssignments);
+      return;
     }
+
+    setUserId(storedId);
+    if (storedName) setUserName(storedName);
+    
+    // Load submissions
+    const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
+    setSubmissions(storedSubmissions);
+
+    // Load assignments from simulated global storage
+    const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+    setAssignments(allAssignments);
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    loadData();
   }, [router]);
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      loadData();
+      setIsRefreshing(false);
+      toast({
+        title: "Classroom Synced",
+        description: "Your assignment list is up to date.",
+      });
+    }, 800);
+  };
+
   const handleLogout = () => {
-    localStorage.clear();
+    // Selective removal to preserve "global" simulation data
+    localStorage.removeItem('userType');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
     router.push('/');
   };
 
@@ -152,7 +173,6 @@ export default function StudentDashboard() {
       setSubmissions(updatedSubmissions);
       localStorage.setItem(`submissions_${userId}`, JSON.stringify(updatedSubmissions));
 
-      // Also update a global-like store for teacher visibility (simulation)
       const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
       localStorage.setItem('all_global_submissions', JSON.stringify([
         { ...newSubmission, studentId: userId, studentName: userName },
@@ -200,7 +220,6 @@ export default function StudentDashboard() {
     setSubmissions(updated);
     localStorage.setItem(`submissions_${userId}`, JSON.stringify(updated));
     
-    // Update global store too
     const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
     localStorage.setItem('all_global_submissions', JSON.stringify(allSubmissions.filter((s: any) => s.id !== id)));
 
@@ -217,9 +236,14 @@ export default function StudentDashboard() {
             <h1 className="text-3xl font-bold text-primary font-headline">Student Classroom</h1>
             <p className="text-muted-foreground">Welcome back, <span className="font-semibold text-primary">{userName || userId}</span></p>
           </div>
-          <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
-            <LogOut className="w-4 h-4 mr-2" /> Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync Classroom
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="classes" className="w-full">
@@ -286,7 +310,7 @@ export default function StudentDashboard() {
                     Upload Submission: {selectedSubject}
                   </CardTitle>
                   <CardDescription>
-                    {assignments.find(a => a.id === selectedAssignmentId)?.description}
+                    {assignments.find(a => a.id === selectedAssignmentId)?.description || "Complete your task and upload the file below."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -323,7 +347,10 @@ export default function StudentDashboard() {
                       <Button type="submit" className="flex-1" disabled={isUploading || !file}>
                         {isUploading ? "Processing..." : "Submit to Classroom"}
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => setSelectedSubject('')}>Cancel</Button>
+                      <Button type="button" variant="outline" onClick={() => {
+                        setSelectedSubject('');
+                        setSelectedAssignmentId('');
+                      }}>Cancel</Button>
                     </div>
                   </form>
                 </CardContent>

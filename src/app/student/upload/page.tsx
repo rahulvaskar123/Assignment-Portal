@@ -27,7 +27,8 @@ import {
   FileText,
   RefreshCw,
   FileDown,
-  ChevronRight
+  ChevronRight,
+  Database
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -142,7 +143,6 @@ export default function StudentDashboard() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    // userName can be userId fallback set in loadData
     if (!file || !selectedSubject || !userId) {
       toast({
         title: "Submission Failed",
@@ -155,7 +155,9 @@ export default function StudentDashboard() {
     setIsUploading(true);
     
     setTimeout(() => {
+      // Create a blob URL for preview (local to browser session)
       const previewUrl = URL.createObjectURL(file);
+      
       const newSubmission: Submission = {
         id: Math.random().toString(36).substr(2, 9),
         assignmentId: selectedAssignmentId,
@@ -179,7 +181,7 @@ export default function StudentDashboard() {
       setIsUploading(false);
       toast({
         title: "Submission Successful",
-        description: "Your assignment has been uploaded to your classroom.",
+        description: "Your assignment has been uploaded to the local classroom storage.",
       });
       
       setFile(null);
@@ -235,8 +237,11 @@ export default function StudentDashboard() {
             <p className="text-muted-foreground">Welcome back, <span className="font-semibold text-primary">{userName || userId}</span></p>
           </div>
           <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-white text-[10px] py-1">
+              <Database className="w-3 h-3 mr-1" /> Prototype Storage: Browser Local
+            </Badge>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync Classroom
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
             </Button>
             <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
               <LogOut className="w-4 h-4 mr-2" /> Logout
@@ -295,7 +300,7 @@ export default function StudentDashboard() {
                                 </div>
                                 {a.fileUrl && (
                                   <p className="text-[9px] italic opacity-60 flex items-center">
-                                    <FileText className="w-3 h-3 mr-1" /> Attached: {a.fileName}
+                                    <FileText className="w-3 h-3 mr-1" /> Attached Reference
                                   </p>
                                 )}
                               </div>
@@ -340,12 +345,17 @@ export default function StudentDashboard() {
                       </div>
 
                       <div className="flex gap-4">
-                        <Button type="submit" className="flex-1" disabled={isUploading || !file}>
+                        <Button 
+                          type="submit" 
+                          className="flex-1" 
+                          disabled={isUploading || !file || !selectedSubject}
+                        >
                           {isUploading ? "Processing..." : "Submit to Classroom"}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => {
                           setSelectedSubject('');
                           setSelectedAssignmentId('');
+                          setFile(null);
                         }}>Cancel</Button>
                       </div>
                     </form>
@@ -384,9 +394,9 @@ export default function StudentDashboard() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant={sub.status === 'Reviewed' ? 'default' : 'secondary'} className="text-[10px] uppercase">{sub.status}</Badge>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => sub.fileUrl && window.open(sub.fileUrl, '_blank')}><Eye className="w-4 h-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview File" onClick={() => sub.fileUrl && window.open(sub.fileUrl, '_blank')}><Eye className="w-4 h-4" /></Button>
                                 {sub.status !== 'Reviewed' && (
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteSubmission(sub.id)}><Trash2 className="w-4 h-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Delete Submission" onClick={() => handleDeleteSubmission(sub.id)}><Trash2 className="w-4 h-4" /></Button>
                                 )}
                               </div>
                             </div>

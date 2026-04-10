@@ -1,7 +1,4 @@
-// This is a placeholder for the server-side S3 logic.
-// In a real application, you would use @aws-sdk/client-s3
 
-/*
 import { S3Client } from "@aws-sdk/client-s3";
 
 export const s3Client = new S3Client({
@@ -11,9 +8,8 @@ export const s3Client = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 });
-*/
 
 export const S3_CONFIG = {
-  region: "ap-south-1",
-  bucketName: "assignment-uploads",
+  region: process.env.AWS_REGION || "ap-south-1",
+  bucketName: process.env.S3_BUCKET_NAME || "assignment-uploads",
 };

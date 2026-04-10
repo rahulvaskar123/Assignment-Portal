@@ -28,7 +28,7 @@ import {
   RefreshCw,
   FileDown,
   ChevronRight,
-  Database
+  CloudCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,9 +37,9 @@ type Submission = {
   assignmentId?: string;
   subject: string;
   fileName: string;
+  s3Key: string;
   date: string;
   status: 'Submitted' | 'Reviewed';
-  fileUrl?: string;
 };
 
 type Assignment = {
@@ -49,7 +49,7 @@ type Assignment = {
   subject: string;
   year: string;
   dueDate: string;
-  fileUrl?: string;
+  s3Key?: string;
   fileName?: string;
 };
 
@@ -90,11 +90,9 @@ export default function StudentDashboard() {
     setUserId(storedId);
     setUserName(storedName || storedId);
     
-    // Load submissions
     const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
     setSubmissions(storedSubmissions);
 
-    // Load assignments from simulated global storage
     const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
     setAssignments(allAssignments);
   };
@@ -123,12 +121,24 @@ export default function StudentDashboard() {
     router.push('/');
   };
 
+  const handlePreview = async (s3Key: string) => {
+    try {
+      const response = await fetch('/api/upload/presigned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: s3Key, operation: 'get' }),
+      });
+      const { url } = await response.json();
+      if (url) window.open(url, '_blank');
+    } catch (err) {
+      toast({ title: "Error", description: "Could not retrieve file from AWS.", variant: "destructive" });
+    }
+  };
+
   const handleOpenAssignment = (subj: string, assignment: Assignment) => {
     setSelectedSubject(subj);
     setSelectedAssignmentId(assignment.id);
     setDescription(`Task: ${assignment.title}`);
-    
-    // Scroll to form after state update
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -136,36 +146,47 @@ export default function StudentDashboard() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-    }
+    if (selectedFile) setFile(selectedFile);
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !selectedSubject || !userId) {
-      toast({
-        title: "Submission Failed",
-        description: "Please ensure all fields are filled and a file is selected.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!file || !selectedSubject || !userId) return;
 
     setIsUploading(true);
-    
-    setTimeout(() => {
-      // Create a blob URL for preview (local to browser session)
-      const previewUrl = URL.createObjectURL(file);
-      
+
+    try {
+      // 1. Get Presigned URL
+      const presignedRes = await fetch('/api/upload/presigned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+          studentId: userId,
+          subject: selectedSubject,
+        }),
+      });
+      const { url, key } = await presignedRes.json();
+
+      if (!url) throw new Error("Could not get upload permission from AWS.");
+
+      // 2. Upload directly to S3
+      await fetch(url, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+
+      // 3. Save reference locally
       const newSubmission: Submission = {
         id: Math.random().toString(36).substr(2, 9),
         assignmentId: selectedAssignmentId,
         subject: selectedSubject,
         fileName: file.name,
+        s3Key: key,
         date: new Date().toISOString().split('T')[0],
-        status: 'Submitted',
-        fileUrl: previewUrl
+        status: 'Submitted'
       };
       
       const updatedSubmissions = [newSubmission, ...submissions];
@@ -178,23 +199,29 @@ export default function StudentDashboard() {
         ...allSubmissions
       ]));
 
-      setIsUploading(false);
       toast({
-        title: "Submission Successful",
-        description: "Your assignment has been uploaded to the local classroom storage.",
+        title: "AWS Upload Complete",
+        description: "File securely stored in S3 and Lambda triggered.",
       });
       
       setFile(null);
       setDescription('');
       setSelectedSubject('');
       setSelectedAssignmentId('');
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload to AWS.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const getAssignmentStatus = (assignment: Assignment) => {
     const isCompleted = submissions.some(s => s.assignmentId === assignment.id || (s.subject === assignment.subject && s.fileName.toLowerCase().includes(assignment.title.toLowerCase())));
     const isPastDue = new Date(assignment.dueDate) < new Date();
-    
     if (isCompleted) return 'Completed';
     if (isPastDue) return 'Missed';
     return 'Pending';
@@ -217,14 +244,10 @@ export default function StudentDashboard() {
     const updated = submissions.filter(s => s.id !== id);
     setSubmissions(updated);
     localStorage.setItem(`submissions_${userId}`, JSON.stringify(updated));
-    
     const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
     localStorage.setItem('all_global_submissions', JSON.stringify(allSubmissions.filter((s: any) => s.id !== id)));
-
-    toast({ title: "Submission Deleted", description: "The assignment has been removed." });
+    toast({ title: "Submission Deleted", description: "Reference removed from classroom." });
   };
-
-  const activeAssignment = assignments.find(a => a.id === selectedAssignmentId);
 
   if (!mounted) return null;
 
@@ -237,8 +260,8 @@ export default function StudentDashboard() {
             <p className="text-muted-foreground">Welcome back, <span className="font-semibold text-primary">{userName || userId}</span></p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-white text-[10px] py-1">
-              <Database className="w-3 h-3 mr-1" /> Prototype Storage: Browser Local
+            <Badge variant="outline" className="bg-white text-[10px] py-1 text-green-600 border-green-200">
+              <CloudCheck className="w-3 h-3 mr-1" /> Storage: AWS S3 Live
             </Badge>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
               <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
@@ -267,7 +290,6 @@ export default function StudentDashboard() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <p className="text-xs text-muted-foreground">Academic Year • {subjectAssignments.length} Assignments</p>
-                      
                       <div className="space-y-2">
                         {subjectAssignments.length > 0 ? (
                           subjectAssignments.map(a => {
@@ -282,27 +304,16 @@ export default function StudentDashboard() {
                                     </p>
                                   </div>
                                   <div className="flex gap-2">
-                                    {a.fileUrl && (
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="Download Reference" onClick={() => window.open(a.fileUrl, '_blank')}>
+                                    {a.s3Key && (
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handlePreview(a.s3Key!)}>
                                         <FileDown className="w-4 h-4" />
                                       </Button>
                                     )}
-                                    <Button 
-                                      size="sm" 
-                                      variant="secondary" 
-                                      className="h-8 text-[10px] font-bold bg-white/50 hover:bg-white"
-                                      onClick={() => handleOpenAssignment(s, a)}
-                                    >
-                                      {status === 'Completed' ? 'Resubmit' : 'Open'}
-                                      <ChevronRight className="w-3 h-3 ml-1" />
+                                    <Button size="sm" variant="secondary" className="h-8 text-[10px] font-bold bg-white/50 hover:bg-white" onClick={() => handleOpenAssignment(s, a)}>
+                                      {status === 'Completed' ? 'Resubmit' : 'Open'} <ChevronRight className="w-3 h-3 ml-1" />
                                     </Button>
                                   </div>
                                 </div>
-                                {a.fileUrl && (
-                                  <p className="text-[9px] italic opacity-60 flex items-center">
-                                    <FileText className="w-3 h-3 mr-1" /> Attached Reference
-                                  </p>
-                                )}
                               </div>
                             );
                           })
@@ -321,11 +332,10 @@ export default function StudentDashboard() {
                 <Card className="shadow-lg border-primary/30 border-2 animate-in fade-in slide-in-from-bottom-4">
                   <CardHeader className="bg-primary/5 border-b">
                     <CardTitle className="flex items-center text-primary text-xl">
-                      <UploadCloud className="w-5 h-5 mr-2" />
-                      Submit: {activeAssignment?.title || selectedSubject}
+                      <UploadCloud className="w-5 h-5 mr-2" /> Submit: {assignments.find(a => a.id === selectedAssignmentId)?.title || selectedSubject}
                     </CardTitle>
                     <CardDescription className="text-sm font-medium text-slate-700 mt-2">
-                      {activeAssignment?.description || "Complete your task and upload the file below."}
+                      Upload your assignment to S3. Lambda will process the metadata automatically.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
@@ -334,7 +344,6 @@ export default function StudentDashboard() {
                         <Label htmlFor="description">Submission Notes</Label>
                         <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide any additional notes about your submission..." className="min-h-[80px]" />
                       </div>
-
                       <div className="space-y-3">
                         <Label>File Attachment</Label>
                         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
@@ -343,14 +352,10 @@ export default function StudentDashboard() {
                           <input type="file" className="hidden" onChange={handleFileChange} required />
                         </label>
                       </div>
-
                       <div className="flex gap-4">
-                        <Button 
-                          type="submit" 
-                          className="flex-1" 
-                          disabled={isUploading || !file || !selectedSubject}
-                        >
-                          {isUploading ? "Processing..." : "Submit to Classroom"}
+                        <Button type="submit" className="flex-1" disabled={isUploading || !file || !selectedSubject}>
+                          {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          {isUploading ? "Uploading to AWS..." : "Upload to S3"}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => {
                           setSelectedSubject('');
@@ -394,9 +399,9 @@ export default function StudentDashboard() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant={sub.status === 'Reviewed' ? 'default' : 'secondary'} className="text-[10px] uppercase">{sub.status}</Badge>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview File" onClick={() => sub.fileUrl && window.open(sub.fileUrl, '_blank')}><Eye className="w-4 h-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(sub.s3Key)}><Eye className="w-4 h-4" /></Button>
                                 {sub.status !== 'Reviewed' && (
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Delete Submission" onClick={() => handleDeleteSubmission(sub.id)}><Trash2 className="w-4 h-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteSubmission(sub.id)}><Trash2 className="w-4 h-4" /></Button>
                                 )}
                               </div>
                             </div>

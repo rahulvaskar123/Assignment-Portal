@@ -30,7 +30,9 @@ import {
   ExternalLink,
   Trash2,
   Eye,
-  UploadCloud
+  UploadCloud,
+  Loader2,
+  CloudCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,8 +43,8 @@ type Submission = {
   assignmentId?: string;
   subject: string;
   fileName: string;
+  s3Key: string;
   date: string;
-  fileUrl?: string;
 };
 
 type Assignment = {
@@ -52,7 +54,7 @@ type Assignment = {
   subject: string;
   year: string;
   dueDate: string;
-  fileUrl?: string;
+  s3Key?: string;
   fileName?: string;
 };
 
@@ -65,10 +67,10 @@ export default function TeacherDashboard() {
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // New assignment form state
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
@@ -80,7 +82,6 @@ export default function TeacherDashboard() {
   const loadData = (subject: string) => {
     const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
     setAssignments(storedAssignments.filter((a: Assignment) => a.subject === subject));
-
     const storedSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
     setAllSubmissions(storedSubmissions.filter((s: Submission) => s.subject === subject));
   };
@@ -98,7 +99,6 @@ export default function TeacherDashboard() {
       setUserName(storedName || 'Professor');
       setTeacherSubject(storedSubject || 'Unassigned');
       setTeacherYear(storedYear || 'General');
-      
       loadData(storedSubject || '');
     }
   }, [router]);
@@ -111,56 +111,80 @@ export default function TeacherDashboard() {
     router.push('/');
   };
 
-  const handleDownload = (fileUrl?: string) => {
-    if (fileUrl) {
-      window.open(fileUrl, '_blank');
-    } else {
-      toast({
-        title: "Preview Unavailable",
-        description: "Source file not found in simulated storage.",
-        variant: "destructive"
+  const handlePreview = async (s3Key: string) => {
+    try {
+      const response = await fetch('/api/upload/presigned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: s3Key, operation: 'get' }),
       });
+      const { url } = await response.json();
+      if (url) window.open(url, '_blank');
+    } catch (err) {
+      toast({ title: "Error", description: "AWS file retrieval failed.", variant: "destructive" });
     }
   };
 
-  const handlePostAssignment = (e: React.FormEvent) => {
+  const handlePostAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle || !newDesc || !newDueDate) return;
 
-    let fileUrl = '';
-    let fileName = '';
+    setIsPosting(true);
+    let s3Key = '';
 
-    if (newFile) {
-      fileUrl = URL.createObjectURL(newFile);
-      fileName = newFile.name;
+    try {
+      if (newFile) {
+        const presignedRes = await fetch('/api/upload/presigned', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: newFile.name,
+            contentType: newFile.type,
+            studentId: 'TEACHER', // Use a special prefix for teacher uploads
+            subject: teacherSubject,
+          }),
+        });
+        const { url, key } = await presignedRes.json();
+        
+        await fetch(url, {
+          method: 'PUT',
+          body: newFile,
+          headers: { 'Content-Type': newFile.type },
+        });
+        s3Key = key;
+      }
+
+      const assignment: Assignment = {
+        id: Math.random().toString(36).substr(2, 9),
+        title: newTitle,
+        description: newDesc,
+        subject: teacherSubject,
+        year: teacherYear,
+        dueDate: newDueDate,
+        s3Key,
+        fileName: newFile?.name
+      };
+
+      const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+      const updatedAssignments = [...allAssignments, assignment];
+      localStorage.setItem('assignments', JSON.stringify(updatedAssignments));
+      
+      setAssignments(updatedAssignments.filter(a => a.subject === teacherSubject));
+      setIsDialogOpen(false);
+      setNewTitle('');
+      setNewDesc('');
+      setNewDueDate('');
+      setNewFile(null);
+
+      toast({
+        title: "AWS Sync Complete",
+        description: "Assignment and reference file saved to S3.",
+      });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsPosting(false);
     }
-
-    const assignment: Assignment = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: newTitle,
-      description: newDesc,
-      subject: teacherSubject,
-      year: teacherYear,
-      dueDate: newDueDate,
-      fileUrl,
-      fileName
-    };
-
-    const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-    const updatedAssignments = [...allAssignments, assignment];
-    localStorage.setItem('assignments', JSON.stringify(updatedAssignments));
-    
-    setAssignments(updatedAssignments.filter(a => a.subject === teacherSubject));
-    setIsDialogOpen(false);
-    setNewTitle('');
-    setNewDesc('');
-    setNewDueDate('');
-    setNewFile(null);
-
-    toast({
-      title: "Assignment Posted",
-      description: "Students in your class have been notified.",
-    });
   };
 
   const handleDeleteAssignment = (id: string) => {
@@ -168,11 +192,7 @@ export default function TeacherDashboard() {
     const updated = allAssignments.filter((a: Assignment) => a.id !== id);
     localStorage.setItem('assignments', JSON.stringify(updated));
     setAssignments(updated.filter((a: Assignment) => a.subject === teacherSubject));
-    
-    toast({
-      title: "Assignment Deleted",
-      description: "The assignment post has been removed.",
-    });
+    toast({ title: "Assignment Deleted", description: "Reference removed." });
   };
 
   const refreshSubmissions = () => {
@@ -180,7 +200,7 @@ export default function TeacherDashboard() {
     setTimeout(() => {
       loadData(teacherSubject);
       setIsLoading(false);
-      toast({ title: "Updated", description: "Latest student submissions fetched." });
+      toast({ title: "Updated", description: "Latest student S3 references fetched." });
     }, 1000);
   };
 
@@ -191,15 +211,16 @@ export default function TeacherDashboard() {
       <header className="bg-accent text-white p-6 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-3">
-            <div className="bg-white/20 p-2 rounded-lg">
-              <FileText className="w-8 h-8" />
-            </div>
+            <div className="bg-white/20 p-2 rounded-lg"><FileText className="w-8 h-8" /></div>
             <div>
               <h1 className="text-2xl font-bold font-headline">Teacher Workspace</h1>
               <p className="text-sm text-white/80">{userName} | {teacherSubject}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Badge variant="outline" className="text-white border-white/20 bg-white/10">
+              <CloudCheck className="w-3 h-3 mr-1" /> AWS Live
+            </Badge>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="secondary" className="bg-white text-accent hover:bg-white/90">
@@ -207,9 +228,7 @@ export default function TeacherDashboard() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>New Assignment</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>New Assignment</DialogTitle></DialogHeader>
                 <form onSubmit={handlePostAssignment} className="space-y-4 pt-4">
                   <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
@@ -232,7 +251,10 @@ export default function TeacherDashboard() {
                     </label>
                   </div>
                   <DialogFooter>
-                    <Button type="submit" className="w-full bg-accent hover:bg-accent/90">Announce to Class</Button>
+                    <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isPosting}>
+                      {isPosting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {isPosting ? "Uploading to S3..." : "Announce to Class"}
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -269,8 +291,7 @@ export default function TeacherDashboard() {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-slate-800">Assignment Monitoring</h2>
           <Button variant="outline" size="sm" onClick={refreshSubmissions} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh Feed
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} /> Refresh Feed
           </Button>
         </div>
 
@@ -279,7 +300,6 @@ export default function TeacherDashboard() {
             assignments.map((assignment) => {
               const assignmentSubmissions = allSubmissions.filter(s => s.assignmentId === assignment.id || s.fileName.toLowerCase().includes(assignment.title.toLowerCase()));
               const submissionPercentage = Math.round((assignmentSubmissions.length / ENROLLED_STUDENTS) * 100);
-
               return (
                 <Card key={assignment.id} className="overflow-hidden border-none shadow-sm">
                   <div className="bg-primary/5 p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -291,33 +311,28 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {assignment.fileUrl && (
-                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleDownload(assignment.fileUrl)}>
+                      {assignment.s3Key && (
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handlePreview(assignment.s3Key!)}>
                           <Eye className="w-3 h-3 mr-1" /> Reference
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAssignment(assignment.id)}>
+                      <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-destructive" onClick={() => handleDeleteAssignment(assignment.id)}>
                         <Trash2 className="w-3 h-3 mr-1" /> Remove Post
                       </Button>
                       <Badge variant="outline" className="bg-white">{submissionPercentage}% Turnover</Badge>
                     </div>
                   </div>
-                  
                   <CardContent className="p-0">
                     <Accordion type="single" collapsible>
                       <AccordionItem value="submissions" className="border-none">
-                        <AccordionTrigger className="px-6 py-3 hover:no-underline text-sm font-medium text-primary">
-                          View Student Submissions
-                        </AccordionTrigger>
+                        <AccordionTrigger className="px-6 py-3 hover:no-underline text-sm font-medium text-primary">View Student Submissions</AccordionTrigger>
                         <AccordionContent className="px-6 pb-6 pt-0">
                           {assignmentSubmissions.length > 0 ? (
                             <div className="divide-y border rounded-lg overflow-hidden bg-slate-50/30">
                               {assignmentSubmissions.map((sub) => (
                                 <div key={sub.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50 transition-colors">
                                   <div className="flex items-center gap-3">
-                                    <div className="bg-white p-2 rounded-full border shadow-sm">
-                                      <User className="w-4 h-4 text-accent" />
-                                    </div>
+                                    <div className="bg-white p-2 rounded-full border shadow-sm"><User className="w-4 h-4 text-accent" /></div>
                                     <div>
                                       <p className="text-sm font-bold text-slate-700">{sub.studentName || sub.studentId}</p>
                                       <p className="text-[10px] text-muted-foreground font-mono">{sub.studentId}</p>
@@ -328,22 +343,15 @@ export default function TeacherDashboard() {
                                     <p className="text-[10px] text-muted-foreground">Submitted on {sub.date}</p>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="text-primary hover:bg-primary/10 h-8"
-                                      onClick={() => handleDownload(sub.fileUrl)}
-                                    >
-                                      <ExternalLink className="w-4 h-4 mr-1" /> Review
+                                    <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-8" onClick={() => handlePreview(sub.s3Key)}>
+                                      <ExternalLink className="w-4 h-4 mr-1" /> Review S3 File
                                     </Button>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="py-8 text-center text-sm text-muted-foreground italic border-2 border-dashed rounded-lg">
-                              No submissions received for this assignment yet.
-                            </div>
+                            <div className="py-8 text-center text-sm text-muted-foreground italic border-2 border-dashed rounded-lg">No submissions yet.</div>
                           )}
                         </AccordionContent>
                       </AccordionItem>
@@ -355,8 +363,7 @@ export default function TeacherDashboard() {
           ) : (
             <div className="text-center py-20 bg-white rounded-xl shadow-sm border">
               <PlusCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground font-medium">You haven't posted any assignments yet.</p>
-              <p className="text-sm text-muted-foreground/60">Click 'Post Assignment' to get started with your classroom.</p>
+              <p className="text-muted-foreground font-medium">No assignments yet.</p>
             </div>
           )}
         </div>

@@ -14,7 +14,7 @@ A full-stack portal for academic assignment management using Next.js and AWS S3.
     aws configure
     ```
 3.  **Environment Variables**:
-    Create a `.env.local` file:
+    Create a `.env.local` file and fill in these values from the AWS Console:
     ```env
     AWS_ACCESS_KEY_ID=your_access_key
     AWS_SECRET_ACCESS_KEY=your_secret_key
@@ -26,29 +26,34 @@ A full-stack portal for academic assignment management using Next.js and AWS S3.
     npm run dev
     ```
 
-## ☁️ AWS Deployment Guide (Free Tier)
+## ☁️ AWS Deployment & Verification Guide
 
-### 1. Create S3 Bucket
-- Go to S3 Console -> Create Bucket.
-- Name: `assignment-uploads`.
-- Region: `ap-south-1`.
-- Block all public access (Private bucket).
+### 1. Verify S3 Bucket & Region
+- Go to the [S3 Console](https://s3.console.aws.amazon.com/s3/home).
+- **Find Bucket Name:** Look at the "Name" column. This is your `S3_BUCKET_NAME`.
+- **Find Region:** Look at the "AWS Region" column next to your bucket. Use the short code (e.g., `ap-south-1`) for `AWS_REGION`.
+- **Important (CORS):** Click your bucket -> **Permissions** -> **CORS**. Click Edit and paste:
+  ```json
+  [
+    {
+      "AllowedHeaders": ["*"],
+      "AllowedMethods": ["PUT", "GET"],
+      "AllowedOrigins": ["*"],
+      "ExposeHeaders": []
+    }
+  ]
+  ```
 
-### 2. Create IAM User
-- Create a user with `AmazonS3FullAccess`.
-- Save the Access Key and Secret Key for deployment.
+### 2. Verify IAM User (Credentials)
+- Go to [IAM Users](https://console.aws.amazon.com/iam/home#/users).
+- Click your user -> **Security credentials** tab.
+- If you haven't saved your Secret Key, you must delete the old one and click **Create access key** again.
 
 ### 3. AWS Lambda Setup
-- Create a new Lambda function.
-- Trigger: S3 `All object create events` on your bucket.
-- Runtime: Node.js 18+.
-- Code: Use the provided `src/lambda/handler.js` logic to log metadata.
+- Go to [Lambda Console](https://console.aws.amazon.com/lambda/home).
+- Create function -> Node.js 18+.
+- **Trigger:** Click "Add trigger", select S3, select your bucket, and "All object create events".
+- **Code:** Paste the logic from `src/lambda/handler.js` into the Lambda editor.
 
-### 4. Hosting (EC2)
-- Launch a `t2.micro` (Free Tier eligible) instance.
-- Region: `ap-south-1`.
-- Security Group: Allow HTTP (80) and Port 3000 (if running Next.js directly).
-- Install Node.js, clone repo, build and start.
-
-## 📁 S3 Naming Convention
+### 📁 S3 Naming Convention
 Files are renamed automatically: `studentID_subject_timestamp_originalfilename.ext`

@@ -22,19 +22,23 @@ export default function StudentUpload() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<{ isAligned: boolean; suggestion: string } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const DEADLINE = new Date('2025-12-31T23:59:59');
-  const isExpired = new Date() > DEADLINE;
 
   useEffect(() => {
+    setMounted(true);
     const storedId = localStorage.getItem('userId');
+    const storedName = localStorage.getItem('userName');
     const userType = localStorage.getItem('userType');
+    
     if (!storedId || userType !== 'student') {
       router.push('/student/login');
     } else {
       setUserId(storedId);
+      if (storedName) setUserName(storedName);
     }
   }, [router]);
 
@@ -87,21 +91,24 @@ export default function StudentUpload() {
     if (!file || !subject || !userName) return;
 
     setIsUploading(true);
-    // In a real AWS environment, we'd send to a Next.js API route that uses AWS SDK
-    // Here we simulate the process
     setTimeout(() => {
       setIsUploading(false);
       toast({
         title: "Submission Successful",
         description: "Your assignment has been securely uploaded to S3.",
       });
-      // Reset form
       setFile(null);
       setAiFeedback(null);
       setDescription('');
       setSubject('');
     }, 2000);
   };
+
+  if (!mounted) {
+    return null;
+  }
+
+  const isExpired = new Date() > DEADLINE;
 
   if (isExpired) {
     return (

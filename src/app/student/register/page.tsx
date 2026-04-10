@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,13 +14,17 @@ export default function StudentRegister() {
   const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && studentId && password) {
-      // Simulate account creation
       localStorage.setItem('userType', 'student');
       localStorage.setItem('userId', studentId);
       localStorage.setItem('userName', name);
@@ -33,6 +37,10 @@ export default function StudentRegister() {
       router.push('/student/upload');
     }
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen p-6">

@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { UserCog, ArrowLeft, Loader2 } from 'lucide-react';
+import { UserCog, ArrowLeft, Loader2, Cloud } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export default function TeacherLogin() {
   const [email, setEmail] = useState('');
@@ -21,48 +22,58 @@ export default function TeacherLogin() {
 
   useEffect(() => {
     setMounted(true);
-    // If already logged in, redirect to dashboard
     const userType = localStorage.getItem('userType');
     if (userType === 'teacher') {
       router.push('/teacher/dashboard');
     }
   }, [router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Simulate database lookup from our "global" registry
-    setTimeout(() => {
-      const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
-      const teacher = teachers.find((t: any) => 
-        t.email.toLowerCase().trim() === normalizedEmail && 
-        t.password === password
-      );
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          userType: 'teacher',
+          userData: { email: normalizedEmail, password }
+        }),
+      });
 
-      if (teacher) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         localStorage.setItem('userType', 'teacher');
-        localStorage.setItem('userName', teacher.name);
-        localStorage.setItem('teacherSubject', teacher.subject);
-        localStorage.setItem('teacherYear', teacher.year);
+        localStorage.setItem('userName', data.user.name);
+        localStorage.setItem('teacherSubject', data.user.subject);
+        localStorage.setItem('teacherYear', data.user.year);
         
         toast({
           title: "Welcome back!",
-          description: `Logged in as Prof. ${teacher.name}`,
+          description: `Logged in to AWS Workspace as Prof. ${data.user.name}`,
         });
         
         router.push('/teacher/dashboard');
       } else {
         toast({
           title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
+          description: data.error || "Invalid email or password.",
           variant: "destructive"
         });
         setIsLoading(false);
       }
-    }, 1000);
+    } catch (error) {
+      toast({
+        title: "AWS Error",
+        description: "Failed to connect to S3 Registry.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
   };
 
   if (!mounted) return null;
@@ -77,10 +88,15 @@ export default function TeacherLogin() {
         
         <Card className="shadow-xl border-t-4 border-t-accent">
           <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-2">
+              <Badge variant="outline" className="text-[10px] text-accent border-accent/20 bg-accent/5">
+                <Cloud className="w-3 h-3 mr-1" /> AWS S3 AUTH
+              </Badge>
+            </div>
             <UserCog className="w-10 h-10 mx-auto text-accent mb-2" />
             <CardTitle className="text-2xl font-headline text-accent">Teacher Sign In</CardTitle>
             <CardDescription>
-              Access your classroom and manage submissions
+              Access your cloud workspace and management tools
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -90,7 +106,7 @@ export default function TeacherLogin() {
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="vinayak.bharadi@uni.edu" 
+                  placeholder="e.g. vinayak.bharadi@uni.edu" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required 
@@ -109,13 +125,13 @@ export default function TeacherLogin() {
               </div>
               <Button type="submit" className="w-full mt-2 bg-accent hover:bg-accent/90" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {isLoading ? "Verifying..." : "Sign In to Workspace"}
+                {isLoading ? "Verifying with AWS..." : "Sign In to Workspace"}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
             <div>
-              New here? <Link href="/teacher/register" className="text-accent font-semibold hover:underline">Create a classroom</Link>
+              New here? <Link href="/teacher/register" className="text-accent font-semibold hover:underline">Create a cloud classroom</Link>
             </div>
           </CardFooter>
         </Card>

@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { UserCog, ArrowLeft } from 'lucide-react';
+import { UserCog, ArrowLeft, Loader2, Cloud } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export default function TeacherRegister() {
   const [name, setName] = useState('');
@@ -18,6 +19,7 @@ export default function TeacherRegister() {
   const [password, setPassword] = useState('');
   const [subject, setSubject] = useState('');
   const [year, setYear] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -26,38 +28,53 @@ export default function TeacherRegister() {
     setMounted(true);
   }, []);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email && password && subject && year) {
+      setIsLoading(true);
       const normalizedEmail = email.toLowerCase().trim();
-      const teachers = JSON.parse(localStorage.getItem('all_global_teachers') || '[]');
-      
-      // Check if already exists
-      const existing = teachers.find((t: any) => t.email.toLowerCase().trim() === normalizedEmail);
-      if (existing) {
+
+      try {
+        const response = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'register',
+            userType: 'teacher',
+            userData: { name, email: normalizedEmail, password, subject, year }
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem('userType', 'teacher');
+          localStorage.setItem('userName', name);
+          localStorage.setItem('teacherSubject', subject);
+          localStorage.setItem('teacherYear', year);
+
+          toast({
+            title: "AWS Setup Complete",
+            description: `Teacher profile saved to cloud registry. Welcome, Prof. ${name}!`,
+          });
+          
+          router.push('/teacher/dashboard');
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: data.error || "Could not save profile to AWS.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+        }
+      } catch (error) {
         toast({
-          title: "Registration Failed",
-          description: "An account with this email already exists. Please log in.",
+          title: "Connection Error",
+          description: "Failed to connect to S3 Registry.",
           variant: "destructive"
         });
-        return;
+        setIsLoading(false);
       }
-
-      const newTeacher = { name, email: normalizedEmail, password, subject, year };
-      localStorage.setItem('all_global_teachers', JSON.stringify([...teachers, newTeacher]));
-
-      // Create session
-      localStorage.setItem('userType', 'teacher');
-      localStorage.setItem('userName', name);
-      localStorage.setItem('teacherSubject', subject);
-      localStorage.setItem('teacherYear', year);
-
-      toast({
-        title: "Teacher Registration Successful",
-        description: `Welcome, Prof. ${name}! Your classroom for ${subject} (${year}) is ready.`,
-      });
-      
-      router.push('/teacher/dashboard');
     }
   };
 
@@ -73,10 +90,15 @@ export default function TeacherRegister() {
         
         <Card className="shadow-xl border-t-4 border-t-accent">
           <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-2">
+              <Badge variant="outline" className="text-[10px] text-accent border-accent/20 bg-accent/5">
+                <Cloud className="w-3 h-3 mr-1" /> AWS CLOUD REGISTRY
+              </Badge>
+            </div>
             <UserCog className="w-10 h-10 mx-auto text-accent mb-2" />
             <CardTitle className="text-2xl font-headline text-accent">Teacher Registration</CardTitle>
             <CardDescription>
-              Set up your classroom profile and manage student submissions
+              Set up your cloud-hosted classroom profile
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -84,11 +106,11 @@ export default function TeacherRegister() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="Dr. Vinayak Bharadi" value={name} onChange={(e) => setName(e.target.value)} required />
+                  <Input id="name" placeholder="e.g. Dr. Vinayak Bharadi" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="vinayak.bharadi@uni.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input id="email" type="email" placeholder="e.g. vinayak.bharadi@uni.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
               </div>
 
@@ -128,8 +150,9 @@ export default function TeacherRegister() {
                 <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
 
-              <Button type="submit" className="w-full mt-4 bg-accent hover:bg-accent/90">
-                Complete Setup
+              <Button type="submit" className="w-full mt-4 bg-accent hover:bg-accent/90" disabled={isLoading}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {isLoading ? "Provisioning AWS Profile..." : "Complete Setup"}
               </Button>
             </form>
           </CardContent>

@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { GraduationCap, ArrowLeft, Loader2 } from 'lucide-react';
+import { GraduationCap, ArrowLeft, Loader2, Cloud } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export default function StudentLogin() {
   const [studentId, setStudentId] = useState('');
@@ -27,41 +28,53 @@ export default function StudentLogin() {
     }
   }, [router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId || !password) return;
 
     setIsLoading(true);
     const normalizedId = studentId.toUpperCase().trim();
 
-    // Simulate database lookup
-    setTimeout(() => {
-      const students = JSON.parse(localStorage.getItem('all_global_students') || '[]');
-      const student = students.find((s: any) => 
-        s.studentId === normalizedId && 
-        s.password === password
-      );
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          userType: 'student',
+          userData: { id: normalizedId, password }
+        }),
+      });
 
-      if (student) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         localStorage.setItem('userType', 'student');
-        localStorage.setItem('userId', student.studentId);
-        localStorage.setItem('userName', student.name);
+        localStorage.setItem('userId', data.user.studentId);
+        localStorage.setItem('userName', data.user.name);
         
         toast({
           title: "Login Successful",
-          description: `Welcome back, ${student.name}`,
+          description: `Welcome back to the AWS Cloud, ${data.user.name}`,
         });
         
         router.push('/student/upload');
       } else {
         toast({
           title: "Access Denied",
-          description: "Invalid Student ID or password. Please register if you haven't yet.",
+          description: data.error || "Invalid Student ID or password.",
           variant: "destructive"
         });
         setIsLoading(false);
       }
-    }, 1000);
+    } catch (error) {
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to AWS Registry.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
   };
 
   if (!mounted) return null;
@@ -76,10 +89,15 @@ export default function StudentLogin() {
         
         <Card className="shadow-xl">
           <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-2">
+              <Badge variant="outline" className="text-[10px] text-primary border-primary/20 bg-primary/5">
+                <Cloud className="w-3 h-3 mr-1" /> AWS S3 AUTH
+              </Badge>
+            </div>
             <GraduationCap className="w-10 h-10 mx-auto text-primary mb-2" />
             <CardTitle className="text-2xl font-headline">Student Login</CardTitle>
             <CardDescription>
-              Enter your student ID to access the upload portal
+              Access your classroom data from the AWS Cloud
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -107,13 +125,13 @@ export default function StudentLogin() {
               </div>
               <Button type="submit" className="w-full mt-2" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {isLoading ? "Verifying..." : "Sign In"}
+                {isLoading ? "Fetching AWS Record..." : "Sign In"}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
             <div>
-              Don't have an account? <Link href="/student/register" className="text-primary font-semibold hover:underline">Register now</Link>
+              Don't have an account? <Link href="/student/register" className="text-primary font-semibold hover:underline">Register to AWS Cloud</Link>
             </div>
           </CardFooter>
         </Card>

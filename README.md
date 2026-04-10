@@ -1,6 +1,7 @@
-# Student Assignment Submission Portal
 
-A full-stack portal for academic assignment management using Next.js, AWS S3, and AWS Lambda.
+# Student Assignment Submission Portal (AWS Cloud Ready)
+
+A full-stack portal for academic assignment management using Next.js and AWS (S3 & Lambda).
 
 ## 🚀 AWS Cloud Setup (The "Baby Steps" Guide)
 
@@ -21,7 +22,7 @@ Without this, your browser will block the upload.
 [
   {
     "AllowedHeaders": ["*"],
-    "AllowedMethods": ["PUT", "GET"],
+    "AllowedMethods": ["PUT", "GET", "POST"],
     "AllowedOrigins": ["*"],
     "ExposeHeaders": []
   }
@@ -44,34 +45,17 @@ AWS_REGION=ap-south-1
 S3_BUCKET_NAME=your_bucket_name
 ```
 
-## 📂 How to Access & Verify Your Data
+## 📂 Cloud Storage Structure
 
-Once a student uploads a file, here is how you check it:
+Your data is organized inside your S3 bucket as follows:
+- `registry/students/`: Contains JSON files for every registered student.
+- `registry/teachers/`: Contains JSON files for every registered teacher.
+- `STUDENTID_SUBJECT_TIMESTAMP_FILENAME.EXT`: These are the actual assignment files.
 
-### 1. Where are the Files? (S3)
-- Go to the [S3 Console](https://s3.console.aws.amazon.com/s3/home).
-- Click on your bucket name.
-- You will see a list of files named like: `STU123_Blockchain_171543210_report.pdf`.
-- **To Download:** Click the checkbox next to a file and click the **Download** button.
+## 🛠️ Verification Checklist
+1. **Login:** Does the login work from different browsers? (If yes, S3 Auth is working!)
+2. **Upload:** Check your **S3 Bucket** -> The file should appear instantly with the naming convention.
+3. **Logs:** Check your **Lambda Logs** in CloudWatch -> You should see the metadata extraction in action.
 
-### 2. Where is the Metadata? (CloudWatch Logs)
-Every time a file is uploaded, your Lambda function "wakes up" and extracts the Student ID and Subject.
-- Go to the [Lambda Console](https://console.aws.amazon.com/lambda/home).
-- Click on your function name (e.g., `process-assignment-upload`).
-- Click the **Monitor** tab at the top.
-- Click **View CloudWatch logs**.
-- Click the latest **Log Stream**.
-- You will see a formatted log that looks like this:
-  ```
-  --- Submission Metadata Extracted ---
-  Student ID: STU12345
-  Subject: Blockchain
-  Time of Upload: 5/12/2024, 10:30:00 AM
-  Original File Name: my_final_report.pdf
-  ------------------------------------
-  ```
-
-## 🛠️ Verification Steps
-1. Login as a student and upload a file.
-2. Check your **S3 Bucket** -> The file should appear instantly.
-3. Check your **Lambda Logs** -> The metadata should be printed in the console!
+## 🔐 Security Note
+For this prototype, user passwords are saved in plain text within the S3 registry JSON files. In a production environment, you should hash passwords before saving them or use a dedicated service like **AWS Cognito**.

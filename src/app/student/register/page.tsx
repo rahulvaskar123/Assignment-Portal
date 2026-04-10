@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { GraduationCap, ArrowLeft, Loader2 } from 'lucide-react';
+import { GraduationCap, ArrowLeft, Loader2, Cloud } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export default function StudentRegister() {
   const [name, setName] = useState('');
@@ -24,44 +25,53 @@ export default function StudentRegister() {
     setMounted(true);
   }, []);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !studentId || !password) return;
     
     setIsLoading(true);
-    
-    // Simulate database delay
-    setTimeout(() => {
-      const normalizedId = studentId.toUpperCase().trim();
-      const students = JSON.parse(localStorage.getItem('all_global_students') || '[]');
-      
-      // Check if student already exists
-      const existing = students.find((s: any) => s.studentId === normalizedId);
-      if (existing) {
+    const normalizedId = studentId.toUpperCase().trim();
+
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
+          userType: 'student',
+          userData: { name, studentId: normalizedId, password }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('userType', 'student');
+        localStorage.setItem('userId', normalizedId);
+        localStorage.setItem('userName', name);
+        
+        toast({
+          title: "AWS Registration Complete",
+          description: `Profile created in S3 Registry. Welcome, ${name}!`,
+        });
+        
+        router.push('/student/upload');
+      } else {
         toast({
           title: "Registration Failed",
-          description: "This Student ID is already registered.",
+          description: data.error || "Could not save to AWS.",
           variant: "destructive"
         });
         setIsLoading(false);
-        return;
       }
-
-      const newStudent = { name, studentId: normalizedId, password };
-      localStorage.setItem('all_global_students', JSON.stringify([...students, newStudent]));
-
-      // Create session
-      localStorage.setItem('userType', 'student');
-      localStorage.setItem('userId', normalizedId);
-      localStorage.setItem('userName', name);
-      
+    } catch (error) {
       toast({
-        title: "Registration Successful",
-        description: `Welcome, ${name}! Your account is ready.`,
+        title: "AWS Connection Error",
+        description: "Failed to connect to S3 Registry.",
+        variant: "destructive"
       });
-      
-      router.push('/student/upload');
-    }, 800);
+      setIsLoading(false);
+    }
   };
 
   if (!mounted) return null;
@@ -76,10 +86,15 @@ export default function StudentRegister() {
         
         <Card className="shadow-xl border-t-4 border-t-primary">
           <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-2">
+              <Badge variant="outline" className="text-[10px] text-primary border-primary/20 bg-primary/5">
+                <Cloud className="w-3 h-3 mr-1" /> AWS CLOUD PROFILE
+              </Badge>
+            </div>
             <GraduationCap className="w-10 h-10 mx-auto text-primary mb-2" />
             <CardTitle className="text-2xl font-headline">Student Registration</CardTitle>
             <CardDescription>
-              Create your account to start submitting assignments
+              Create your permanent profile in the AWS Registry
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -88,7 +103,7 @@ export default function StudentRegister() {
                 <Label htmlFor="name">Full Name</Label>
                 <Input 
                   id="name" 
-                  placeholder="Rahul" 
+                  placeholder="e.g. Rahul" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required 
@@ -117,7 +132,7 @@ export default function StudentRegister() {
               </div>
               <Button type="submit" className="w-full mt-2" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {isLoading ? "Creating Profile..." : "Create Account"}
+                {isLoading ? "Syncing with AWS..." : "Create Cloud Account"}
               </Button>
             </form>
           </CardContent>

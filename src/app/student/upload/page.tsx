@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -33,6 +34,7 @@ type Submission = {
   fileName: string;
   date: string;
   status: 'Submitted' | 'Reviewed';
+  fileUrl?: string; // URL for previewing
 };
 
 const SUBJECTS = [
@@ -114,25 +116,34 @@ export default function StudentDashboard() {
     if (!file || !subject || !userName) return;
 
     setIsUploading(true);
+    
+    // Simulate upload delay
     setTimeout(() => {
+      // Create a local preview URL for the uploaded file
+      const previewUrl = URL.createObjectURL(file);
+      
       const newSubmission: Submission = {
         id: Math.random().toString(36).substr(2, 9),
         subject,
         fileName: file.name,
         date: new Date().toISOString().split('T')[0],
-        status: 'Submitted'
+        status: 'Submitted',
+        fileUrl: previewUrl
       };
+      
       setSubmissions([newSubmission, ...submissions]);
       setIsUploading(false);
       toast({
         title: "Submission Successful",
         description: "Your assignment has been uploaded to your classroom.",
       });
+      
+      // Reset form
       setFile(null);
       setAiFeedback(null);
       setDescription('');
       setSubject('');
-    }, 2000);
+    }, 1500);
   };
 
   const handleDeleteSubmission = (id: string) => {
@@ -146,6 +157,11 @@ export default function StudentDashboard() {
       return;
     }
 
+    // Revoke object URL to free memory if it exists
+    if (subToDelete?.fileUrl) {
+      URL.revokeObjectURL(subToDelete.fileUrl);
+    }
+
     setSubmissions(submissions.filter(s => s.id !== id));
     toast({
       title: "Submission Deleted",
@@ -153,11 +169,17 @@ export default function StudentDashboard() {
     });
   };
 
-  const handlePreviewSubmission = (fileName: string) => {
-    toast({
-      title: "Previewing Document",
-      description: `Generating secure preview for ${fileName}...`,
-    });
+  const handlePreviewSubmission = (sub: Submission) => {
+    if (sub.fileUrl) {
+      // Open the local file preview in a new tab
+      window.open(sub.fileUrl, '_blank');
+    } else {
+      // For mock submissions that don't have a physical file attached
+      toast({
+        title: "Preview Unavailable",
+        description: `This is a historical mock entry. Only files uploaded in this session can be previewed.`,
+      });
+    }
   };
 
   if (!mounted) return null;
@@ -304,7 +326,7 @@ export default function StudentDashboard() {
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8 text-muted-foreground hover:text-primary"
-                              onClick={() => handlePreviewSubmission(sub.fileName)}
+                              onClick={() => handlePreviewSubmission(sub)}
                               title="Preview Document"
                             >
                               <Eye className="w-4 h-4" />

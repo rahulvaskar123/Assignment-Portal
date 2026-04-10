@@ -44,13 +44,34 @@ AWS_REGION=ap-south-1
 S3_BUCKET_NAME=your_bucket_name
 ```
 
-## 📂 S3 Naming Convention
-Files are renamed automatically by the app for the Lambda to process: 
-`studentID_subject_timestamp_originalfilename.ext`
-Example: `STU123_Blockchain_171543210_report.pdf`
+## 📂 How to Access & Verify Your Data
 
-## 🛠️ Verification
-1. Upload a file as a student.
-2. Go to your **S3 Bucket** -> You should see the file there.
-3. Go to your **Lambda Function** -> Click **Monitor** tab -> **View logs in CloudWatch**. 
-4. You will see the extracted Student ID and Subject logged there!
+Once a student uploads a file, here is how you check it:
+
+### 1. Where are the Files? (S3)
+- Go to the [S3 Console](https://s3.console.aws.amazon.com/s3/home).
+- Click on your bucket name.
+- You will see a list of files named like: `STU123_Blockchain_171543210_report.pdf`.
+- **To Download:** Click the checkbox next to a file and click the **Download** button.
+
+### 2. Where is the Metadata? (CloudWatch Logs)
+Every time a file is uploaded, your Lambda function "wakes up" and extracts the Student ID and Subject.
+- Go to the [Lambda Console](https://console.aws.amazon.com/lambda/home).
+- Click on your function name (e.g., `process-assignment-upload`).
+- Click the **Monitor** tab at the top.
+- Click **View CloudWatch logs**.
+- Click the latest **Log Stream**.
+- You will see a formatted log that looks like this:
+  ```
+  --- Submission Metadata Extracted ---
+  Student ID: STU12345
+  Subject: Blockchain
+  Time of Upload: 5/12/2024, 10:30:00 AM
+  Original File Name: my_final_report.pdf
+  ------------------------------------
+  ```
+
+## 🛠️ Verification Steps
+1. Login as a student and upload a file.
+2. Check your **S3 Bucket** -> The file should appear instantly.
+3. Check your **Lambda Logs** -> The metadata should be printed in the console!

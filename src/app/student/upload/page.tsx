@@ -13,6 +13,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from "@/components/ui/accordion";
+import { 
   UploadCloud, 
   FileCheck, 
   Loader2, 
@@ -297,64 +303,81 @@ export default function StudentDashboard() {
           </TabsContent>
 
           <TabsContent value="history">
-            <Card>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {submissions.length > 0 ? (
-                    submissions.map((sub) => (
-                      <div key={sub.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-muted/10 transition-colors">
-                        <div className="flex items-center space-x-4 flex-1">
-                          <div className="bg-primary/10 p-2 rounded-lg text-primary">
-                            <FileText className="w-6 h-6" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold truncate">{sub.subject}</p>
-                            <p className="text-xs text-muted-foreground truncate">{sub.fileName}</p>
-                            <div className="flex items-center text-[10px] text-muted-foreground mt-1">
-                              <Clock className="w-3 h-3 mr-1" /> {sub.date}
-                            </div>
-                          </div>
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              {SUBJECTS.map((subj) => {
+                const subjectSubmissions = submissions.filter(s => s.subject === subj);
+                return (
+                  <AccordionItem key={subj} value={subj} className="border rounded-lg bg-white px-4 shadow-sm border-none">
+                    <AccordionTrigger className="hover:no-underline py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-primary/10 p-2 rounded-lg text-primary">
+                          <BookOpen className="w-5 h-5" />
                         </div>
-
-                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${sub.status === 'Reviewed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                            {sub.status}
-                          </span>
-                          
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-muted-foreground hover:text-primary"
-                              onClick={() => handlePreviewSubmission(sub)}
-                              title="Preview Document"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            
-                            {sub.status !== 'Reviewed' && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => handleDeleteSubmission(sub.id)}
-                                title="Delete Submission"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
+                        <div className="text-left">
+                          <p className="font-bold text-slate-800">{subj}</p>
+                          <p className="text-xs text-muted-foreground">{subjectSubmissions.length} Assignment(s)</p>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-12 text-center text-muted-foreground">
-                      No assignments submitted yet.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-0 pb-4">
+                      <div className="divide-y border-t mt-2">
+                        {subjectSubmissions.length > 0 ? (
+                          subjectSubmissions.map((sub) => (
+                            <div key={sub.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
+                              <div className="flex items-center space-x-4 flex-1">
+                                <div className="bg-slate-100 p-2 rounded-lg text-slate-500">
+                                  <FileText className="w-5 h-5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold truncate text-slate-700">{sub.fileName}</p>
+                                  <div className="flex items-center text-[10px] text-muted-foreground mt-1">
+                                    <Clock className="w-3 h-3 mr-1" /> {sub.date}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${sub.status === 'Reviewed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {sub.status}
+                                </span>
+                                
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                    onClick={() => handlePreviewSubmission(sub)}
+                                    title="Preview Document"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  
+                                  {sub.status !== 'Reviewed' && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                      onClick={() => handleDeleteSubmission(sub.id)}
+                                      title="Delete Submission"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-8 text-center text-sm text-muted-foreground italic">
+                            No assignments submitted for this class yet.
+                          </div>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </TabsContent>
         </Tabs>
       </div>

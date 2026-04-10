@@ -30,7 +30,7 @@ export default function LandingPage() {
             </div>
             <CardTitle className="text-3xl font-bold">For Students</CardTitle>
             <CardDescription className="text-lg px-4">
-              Access your classes, submit assignments, and get real-time AI feedback.
+              Access your classes, submit assignments, and track your academic progress.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col space-y-4 pb-8">
@@ -77,7 +77,7 @@ export default function LandingPage() {
       <div className="flex flex-wrap justify-center gap-8 pt-8 text-muted-foreground/60">
         <div className="flex items-center"><BookOpen className="w-4 h-4 mr-2" /> Structured Learning</div>
         <div className="flex items-center"><Layers className="w-4 h-4 mr-2" /> Batch Management</div>
-        <div className="flex items-center"><FileCheck className="w-4 h-4 mr-2" /> AI Verification</div>
+        <div className="flex items-center"><FileCheck className="w-4 h-4 mr-2" /> Digital Submissions</div>
       </div>
     </div>
   );

@@ -3,15 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from '@/components/ui/badge';
 import { 
   Accordion, 
   AccordionContent, 
@@ -29,7 +28,8 @@ import {
   CheckCircle2, 
   Trash2, 
   Eye,
-  FileText
+  FileText,
+  Calendar
 } from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
@@ -40,7 +40,16 @@ type Submission = {
   fileName: string;
   date: string;
   status: 'Submitted' | 'Reviewed';
-  fileUrl?: string; // URL for previewing
+  fileUrl?: string;
+};
+
+type Assignment = {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  year: string;
+  dueDate: string;
 };
 
 const SUBJECTS = [
@@ -53,13 +62,15 @@ const SUBJECTS = [
 export default function StudentDashboard() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
-  const [subject, setSubject] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<{ isAligned: boolean; suggestion: string } | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -76,12 +87,21 @@ export default function StudentDashboard() {
       setUserId(storedId);
       if (storedName) setUserName(storedName);
       
-      // Load mock submissions
-      const mockSubmissions: Submission[] = [
-        { id: '1', subject: 'Cloud Computing', fileName: 'aws_arch_assignment.pdf', date: '2024-05-01', status: 'Reviewed' },
-        { id: '2', subject: 'Blockchain', fileName: 'smart_contract_report.docx', date: '2024-05-08', status: 'Submitted' },
-      ];
-      setSubmissions(mockSubmissions);
+      // Load submissions
+      const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
+      if (storedSubmissions.length === 0) {
+        // Initial mock if none exist
+        const mockSub: Submission[] = [
+          { id: '1', subject: 'Cloud Computing', fileName: 'aws_arch_assignment.pdf', date: '2024-05-01', status: 'Reviewed' },
+        ];
+        setSubmissions(mockSub);
+      } else {
+        setSubmissions(storedSubmissions);
+      }
+
+      // Load assignments from simulated global storage
+      const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+      setAssignments(allAssignments);
     }
   }, [router]);
 
@@ -91,11 +111,11 @@ export default function StudentDashboard() {
   };
 
   const verifyWithAI = async () => {
-    if (!subject || !description) return;
+    if (!selectedSubject || !description) return;
     setIsVerifying(true);
     try {
       const result = await assignmentVerificationAssistant({
-        subject: subject as any,
+        subject: selectedSubject as any,
         freeTextDescription: description
       });
       setAiFeedback(result);
@@ -119,73 +139,66 @@ export default function StudentDashboard() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !subject || !userName) return;
+    if (!file || !selectedSubject || !userName) return;
 
     setIsUploading(true);
     
-    // Simulate upload delay
     setTimeout(() => {
-      // Create a local preview URL for the uploaded file
       const previewUrl = URL.createObjectURL(file);
-      
       const newSubmission: Submission = {
         id: Math.random().toString(36).substr(2, 9),
-        subject,
+        subject: selectedSubject,
         fileName: file.name,
         date: new Date().toISOString().split('T')[0],
         status: 'Submitted',
         fileUrl: previewUrl
       };
       
-      setSubmissions([newSubmission, ...submissions]);
+      const updatedSubmissions = [newSubmission, ...submissions];
+      setSubmissions(updatedSubmissions);
+      localStorage.setItem(`submissions_${userId}`, JSON.stringify(updatedSubmissions));
+
       setIsUploading(false);
       toast({
         title: "Submission Successful",
         description: "Your assignment has been uploaded to your classroom.",
       });
       
-      // Reset form
       setFile(null);
       setAiFeedback(null);
       setDescription('');
-      setSubject('');
+      setSelectedSubject('');
+      setSelectedAssignmentId('');
     }, 1500);
+  };
+
+  const getAssignmentStatus = (assignment: Assignment) => {
+    const isCompleted = submissions.some(s => s.subject === assignment.subject && (s.fileName.toLowerCase().includes(assignment.title.toLowerCase()) || s.date >= '2024-01-01'));
+    const isPastDue = new Date(assignment.dueDate) < new Date();
+    
+    if (isCompleted) return 'Completed';
+    if (isPastDue) return 'Missed';
+    return 'Pending';
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Completed': return 'bg-green-100 text-green-700 border-green-200';
+      case 'Missed': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
   };
 
   const handleDeleteSubmission = (id: string) => {
     const subToDelete = submissions.find(s => s.id === id);
     if (subToDelete?.status === 'Reviewed') {
-      toast({
-        title: "Action Denied",
-        description: "Reviewed assignments cannot be deleted.",
-        variant: "destructive"
-      });
+      toast({ title: "Action Denied", description: "Reviewed assignments cannot be deleted.", variant: "destructive" });
       return;
     }
-
-    // Revoke object URL to free memory if it exists
-    if (subToDelete?.fileUrl) {
-      URL.revokeObjectURL(subToDelete.fileUrl);
-    }
-
-    setSubmissions(submissions.filter(s => s.id !== id));
-    toast({
-      title: "Submission Deleted",
-      description: "The assignment has been removed from your history.",
-    });
-  };
-
-  const handlePreviewSubmission = (sub: Submission) => {
-    if (sub.fileUrl) {
-      // Open the local file preview in a new tab
-      window.open(sub.fileUrl, '_blank');
-    } else {
-      // For mock submissions that don't have a physical file attached
-      toast({
-        title: "Preview Unavailable",
-        description: `This is a historical mock entry. Only files uploaded in this session can be previewed.`,
-      });
-    }
+    const updated = submissions.filter(s => s.id !== id);
+    setSubmissions(updated);
+    localStorage.setItem(`submissions_${userId}`, JSON.stringify(updated));
+    toast({ title: "Submission Deleted", description: "The assignment has been removed." });
   };
 
   if (!mounted) return null;
@@ -211,90 +224,100 @@ export default function StudentDashboard() {
 
           <TabsContent value="classes" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {SUBJECTS.map((s) => (
-                <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-lg font-bold">{s}</CardTitle>
-                    <BookOpen className="w-5 h-5 text-primary opacity-50" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">Class Year: 3rd Year</p>
-                    <Button variant="outline" size="sm" onClick={() => setSubject(s)} className="w-full">
-                      Submit Assignment
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {SUBJECTS.map((s) => {
+                const subjectAssignments = assignments.filter(a => a.subject === s);
+                return (
+                  <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg font-bold">{s}</CardTitle>
+                      <BookOpen className="w-5 h-5 text-primary opacity-50" />
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-xs text-muted-foreground">3rd Year • {subjectAssignments.length} Assignments Assigned</p>
+                      
+                      <div className="space-y-2">
+                        {subjectAssignments.length > 0 ? (
+                          subjectAssignments.map(a => {
+                            const status = getAssignmentStatus(a);
+                            return (
+                              <div key={a.id} className={`p-3 border rounded-lg flex justify-between items-center ${getStatusColor(status)}`}>
+                                <div className="text-left">
+                                  <p className="text-sm font-bold">{a.title}</p>
+                                  <p className="text-[10px] flex items-center opacity-70">
+                                    <Clock className="w-3 h-3 mr-1" /> Due: {a.dueDate}
+                                  </p>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 text-[10px] font-bold"
+                                  onClick={() => {
+                                    setSelectedSubject(s);
+                                    setSelectedAssignmentId(a.id);
+                                    setDescription(`Assignment: ${a.title}`);
+                                  }}
+                                >
+                                  {status === 'Completed' ? 'Resubmit' : 'Open'}
+                                </Button>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-xs text-muted-foreground italic p-2 bg-slate-50 rounded">No active assignments.</div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
-            {subject && (
-              <Card className="shadow-lg border-primary/20">
+            {selectedSubject && (
+              <Card className="shadow-lg border-primary/20 animate-in fade-in slide-in-from-bottom-4">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-primary">
+                  <CardTitle className="flex items-center text-primary text-xl">
                     <UploadCloud className="w-5 h-5 mr-2" />
-                    Submit to {subject}
+                    Upload Submission: {selectedSubject}
                   </CardTitle>
+                  <CardDescription>
+                    {assignments.find(a => a.id === selectedAssignmentId)?.description}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleUpload} className="space-y-6">
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="description">Assignment Overview (AI verified)</Label>
-                        <Button 
-                          type="button" 
-                          variant="link" 
-                          size="sm" 
-                          className="text-accent h-auto p-0"
-                          onClick={verifyWithAI}
-                          disabled={isVerifying || !description}
-                        >
-                          {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />}
-                          Check Alignment
+                        <Label htmlFor="description">Brief Topic Summary (AI Alignment Check)</Label>
+                        <Button type="button" variant="link" size="sm" className="text-accent h-auto p-0" onClick={verifyWithAI} disabled={isVerifying || !description}>
+                          {isVerifying ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileCheck className="w-3 h-3 mr-1" />} Check Alignment
                         </Button>
                       </div>
-                      <Textarea 
-                        id="description" 
-                        value={description} 
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Briefly describe your assignment topic..." 
-                        className="min-h-[100px]"
-                      />
+                      <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Explain your assignment topic in 1-2 sentences..." className="min-h-[80px]" />
                     </div>
 
                     {aiFeedback && (
                       <Alert className={aiFeedback.isAligned ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}>
                         <AlertTitle className="flex items-center text-sm">
-                          {aiFeedback.isAligned ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />}
-                          AI Guidance
+                          {aiFeedback.isAligned ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />} AI Feedback
                         </AlertTitle>
-                        <AlertDescription className="text-xs mt-1">
-                          {aiFeedback.suggestion}
-                        </AlertDescription>
+                        <AlertDescription className="text-xs mt-1">{aiFeedback.suggestion}</AlertDescription>
                       </Alert>
                     )}
 
-                    <div className="space-y-4">
-                      <Label>Attachment</Label>
-                      <div className="flex items-center justify-center w-full">
-                        <label htmlFor="file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
-                          <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                            <UploadCloud className="w-8 h-8 text-muted-foreground mb-2" />
-                            <p className="text-xs text-muted-foreground">
-                              {file ? <span className="text-primary font-medium">{file.name}</span> : "PDF, ZIP, or DOCX (Max 10MB)"}
-                            </p>
-                          </div>
-                          <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} required />
-                        </label>
-                      </div>
+                    <div className="space-y-3">
+                      <Label>File Attachment</Label>
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
+                        <UploadCloud className="w-8 h-8 text-muted-foreground mb-2" />
+                        <p className="text-xs text-muted-foreground">{file ? file.name : "Select PDF, ZIP, or DOCX"}</p>
+                        <input type="file" className="hidden" onChange={handleFileChange} required />
+                      </label>
                     </div>
 
                     <div className="flex gap-4">
                       <Button type="submit" className="flex-1" disabled={isUploading || !file}>
-                        {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</> : "Post to Classroom"}
+                        {isUploading ? "Processing..." : "Submit to Classroom"}
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => { setSubject(''); setFile(null); setAiFeedback(null); }}>
-                        Cancel
-                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setSelectedSubject('')}>Cancel</Button>
                     </div>
                   </form>
                 </CardContent>
@@ -310,12 +333,10 @@ export default function StudentDashboard() {
                   <AccordionItem key={subj} value={subj} className="border rounded-lg bg-white px-4 shadow-sm border-none">
                     <AccordionTrigger className="hover:no-underline py-4">
                       <div className="flex items-center gap-3">
-                        <div className="bg-primary/10 p-2 rounded-lg text-primary">
-                          <BookOpen className="w-5 h-5" />
-                        </div>
+                        <div className="bg-primary/10 p-2 rounded-lg text-primary"><BookOpen className="w-5 h-5" /></div>
                         <div className="text-left">
                           <p className="font-bold text-slate-800">{subj}</p>
-                          <p className="text-xs text-muted-foreground">{subjectSubmissions.length} Assignment(s)</p>
+                          <p className="text-xs text-muted-foreground">{subjectSubmissions.length} Assignment(s) Submitted</p>
                         </div>
                       </div>
                     </AccordionTrigger>
@@ -323,54 +344,25 @@ export default function StudentDashboard() {
                       <div className="divide-y border-t mt-2">
                         {subjectSubmissions.length > 0 ? (
                           subjectSubmissions.map((sub) => (
-                            <div key={sub.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
+                            <div key={sub.id} className="py-4 flex items-center justify-between gap-4">
                               <div className="flex items-center space-x-4 flex-1">
-                                <div className="bg-slate-100 p-2 rounded-lg text-slate-500">
-                                  <FileText className="w-5 h-5" />
-                                </div>
+                                <FileText className="w-5 h-5 text-slate-400" />
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold truncate text-slate-700">{sub.fileName}</p>
-                                  <div className="flex items-center text-[10px] text-muted-foreground mt-1">
-                                    <Clock className="w-3 h-3 mr-1" /> {sub.date}
-                                  </div>
+                                  <p className="text-sm font-semibold truncate">{sub.fileName}</p>
+                                  <div className="flex items-center text-[10px] text-muted-foreground mt-1"><Clock className="w-3 h-3 mr-1" /> {sub.date}</div>
                                 </div>
                               </div>
-
-                              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${sub.status === 'Reviewed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                  {sub.status}
-                                </span>
-                                
-                                <div className="flex items-center gap-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                    onClick={() => handlePreviewSubmission(sub)}
-                                    title="Preview Document"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  
-                                  {sub.status !== 'Reviewed' && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                      onClick={() => handleDeleteSubmission(sub.id)}
-                                      title="Delete Submission"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={sub.status === 'Reviewed' ? 'default' : 'secondary'} className="text-[10px] uppercase">{sub.status}</Badge>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => sub.fileUrl && window.open(sub.fileUrl, '_blank')}><Eye className="w-4 h-4" /></Button>
+                                {sub.status !== 'Reviewed' && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteSubmission(sub.id)}><Trash2 className="w-4 h-4" /></Button>
+                                )}
                               </div>
                             </div>
                           ))
                         ) : (
-                          <div className="py-8 text-center text-sm text-muted-foreground italic">
-                            No assignments submitted for this class yet.
-                          </div>
+                          <div className="py-8 text-center text-sm text-muted-foreground italic">No submissions for this subject yet.</div>
                         )}
                       </div>
                     </AccordionContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Download, Filter, LogOut, RefreshCw, FileText, Users, CalendarDays } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Download, LogOut, RefreshCw, FileText, Users, CalendarDays, PlusCircle, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Submission = {
@@ -18,14 +21,30 @@ type Submission = {
   uploadTime: string;
 };
 
+type Assignment = {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  year: string;
+  dueDate: string;
+};
+
 export default function TeacherDashboard() {
   const [userName, setUserName] = useState('');
   const [teacherSubject, setTeacherSubject] = useState('');
   const [teacherYear, setTeacherYear] = useState('');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [filterSubject, setFilterSubject] = useState<string>('All');
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // New assignment form state
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newDueDate, setNewDueDate] = useState('');
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -42,13 +61,16 @@ export default function TeacherDashboard() {
       setUserName(storedName || 'Professor');
       setTeacherSubject(storedSubject || 'Unassigned');
       setTeacherYear(storedYear || 'General');
-      setFilterSubject(storedSubject || 'All');
       
       // Load mock submissions
       setSubmissions([
         { id: '1', studentId: 'STU9012', subject: storedSubject || 'Cloud Computing', fileName: 'Final_Project_V1.pdf', uploadTime: '2024-05-10 14:20' },
         { id: '2', studentId: 'STU4567', subject: storedSubject || 'Cloud Computing', fileName: 'Architecture_Diagram.zip', uploadTime: '2024-05-11 09:15' },
       ]);
+
+      // Load assignments from localStorage
+      const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+      setAssignments(storedAssignments.filter((a: Assignment) => a.subject === storedSubject));
     }
   }, [router]);
 
@@ -61,6 +83,35 @@ export default function TeacherDashboard() {
     toast({
       title: "Downloading File",
       description: `Opening secure link for ${fileName}`,
+    });
+  };
+
+  const handlePostAssignment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle || !newDesc || !newDueDate) return;
+
+    const assignment: Assignment = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: newTitle,
+      description: newDesc,
+      subject: teacherSubject,
+      year: teacherYear,
+      dueDate: newDueDate,
+    };
+
+    const updatedAssignments = [...assignments, assignment];
+    const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+    localStorage.setItem('assignments', JSON.stringify([...allAssignments, assignment]));
+    
+    setAssignments(updatedAssignments);
+    setIsDialogOpen(false);
+    setNewTitle('');
+    setNewDesc('');
+    setNewDueDate('');
+
+    toast({
+      title: "Assignment Posted",
+      description: "Students in your class have been notified.",
     });
   };
 
@@ -87,9 +138,40 @@ export default function TeacherDashboard() {
               <p className="text-sm text-white/80">{userName} | {teacherSubject}</p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleLogout} className="bg-white text-accent hover:bg-white/90">
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </Button>
+          <div className="flex items-center gap-4">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary" className="bg-white text-accent hover:bg-white/90">
+                  <PlusCircle className="w-4 h-4 mr-2" /> Post Assignment
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>New Assignment</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handlePostAssignment} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input id="title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. AWS Final Lab" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="desc">Description</Label>
+                    <Textarea id="desc" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Briefly describe the task..." required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dueDate">Due Date</Label>
+                    <Input id="dueDate" type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} required />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" className="w-full bg-accent hover:bg-accent/90">Announce to Class</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white hover:bg-white/10">
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -109,8 +191,8 @@ export default function TeacherDashboard() {
           </Card>
           <Card className="bg-card shadow-sm border-l-4 border-l-green-500">
             <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><RefreshCw className="w-4 h-4 mr-1" /> New Submissions</CardDescription>
-              <CardTitle className="text-4xl font-bold text-green-500">{submissions.length}</CardTitle>
+              <CardDescription className="flex items-center"><Bell className="w-4 h-4 mr-1" /> Active Tasks</CardDescription>
+              <CardTitle className="text-4xl font-bold text-green-500">{assignments.length}</CardTitle>
             </CardHeader>
           </Card>
         </div>

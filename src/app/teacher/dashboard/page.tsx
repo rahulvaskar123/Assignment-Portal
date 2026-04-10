@@ -27,7 +27,10 @@ import {
   Bell,
   User,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Trash2,
+  Eye,
+  UploadCloud
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,6 +52,8 @@ type Assignment = {
   subject: string;
   year: string;
   dueDate: string;
+  fileUrl?: string;
+  fileName?: string;
 };
 
 const ENROLLED_STUDENTS = 67;
@@ -67,16 +72,15 @@ export default function TeacherDashboard() {
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
+  const [newFile, setNewFile] = useState<File | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
 
   const loadData = (subject: string) => {
-    // Load assignments from global storage
     const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
     setAssignments(storedAssignments.filter((a: Assignment) => a.subject === subject));
 
-    // Load submissions from global simulation
     const storedSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
     setAllSubmissions(storedSubmissions.filter((s: Submission) => s.subject === subject));
   };
@@ -100,7 +104,6 @@ export default function TeacherDashboard() {
   }, [router]);
 
   const handleLogout = () => {
-    // Selective removal to preserve "global" simulation data
     localStorage.removeItem('userType');
     localStorage.removeItem('userName');
     localStorage.removeItem('teacherSubject');
@@ -113,7 +116,7 @@ export default function TeacherDashboard() {
       window.open(fileUrl, '_blank');
     } else {
       toast({
-        title: "Download Unavailable",
+        title: "Preview Unavailable",
         description: "Source file not found in simulated storage.",
         variant: "destructive"
       });
@@ -124,6 +127,14 @@ export default function TeacherDashboard() {
     e.preventDefault();
     if (!newTitle || !newDesc || !newDueDate) return;
 
+    let fileUrl = '';
+    let fileName = '';
+
+    if (newFile) {
+      fileUrl = URL.createObjectURL(newFile);
+      fileName = newFile.name;
+    }
+
     const assignment: Assignment = {
       id: Math.random().toString(36).substr(2, 9),
       title: newTitle,
@@ -131,20 +142,36 @@ export default function TeacherDashboard() {
       subject: teacherSubject,
       year: teacherYear,
       dueDate: newDueDate,
+      fileUrl,
+      fileName
     };
 
     const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-    localStorage.setItem('assignments', JSON.stringify([...allAssignments, assignment]));
+    const updatedAssignments = [...allAssignments, assignment];
+    localStorage.setItem('assignments', JSON.stringify(updatedAssignments));
     
-    setAssignments(prev => [...prev, assignment]);
+    setAssignments(updatedAssignments.filter(a => a.subject === teacherSubject));
     setIsDialogOpen(false);
     setNewTitle('');
     setNewDesc('');
     setNewDueDate('');
+    setNewFile(null);
 
     toast({
       title: "Assignment Posted",
       description: "Students in your class have been notified.",
+    });
+  };
+
+  const handleDeleteAssignment = (id: string) => {
+    const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
+    const updated = allAssignments.filter((a: Assignment) => a.id !== id);
+    localStorage.setItem('assignments', JSON.stringify(updated));
+    setAssignments(updated.filter((a: Assignment) => a.subject === teacherSubject));
+    
+    toast({
+      title: "Assignment Deleted",
+      description: "The assignment post has been removed.",
     });
   };
 
@@ -195,6 +222,14 @@ export default function TeacherDashboard() {
                   <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
                     <Input id="dueDate" type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reference Document (Optional)</Label>
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
+                      <UploadCloud className="w-6 h-6 text-muted-foreground mb-1" />
+                      <p className="text-[10px] text-muted-foreground">{newFile ? newFile.name : "Attach Reference File"}</p>
+                      <input type="file" className="hidden" onChange={(e) => setNewFile(e.target.files?.[0] || null)} />
+                    </label>
                   </div>
                   <DialogFooter>
                     <Button type="submit" className="w-full bg-accent hover:bg-accent/90">Announce to Class</Button>
@@ -256,6 +291,14 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {assignment.fileUrl && (
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleDownload(assignment.fileUrl)}>
+                          <Eye className="w-3 h-3 mr-1" /> Reference
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAssignment(assignment.id)}>
+                        <Trash2 className="w-3 h-3 mr-1" /> Remove Post
+                      </Button>
                       <Badge variant="outline" className="bg-white">{submissionPercentage}% Turnover</Badge>
                     </div>
                   </div>

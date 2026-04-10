@@ -29,7 +29,8 @@ import {
   Trash2, 
   Eye,
   FileText,
-  RefreshCw
+  RefreshCw,
+  FileDown
 } from 'lucide-react';
 import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +52,8 @@ type Assignment = {
   subject: string;
   year: string;
   dueDate: string;
+  fileUrl?: string;
+  fileName?: string;
 };
 
 const SUBJECTS = [
@@ -117,7 +120,6 @@ export default function StudentDashboard() {
   };
 
   const handleLogout = () => {
-    // Selective removal to preserve "global" simulation data
     localStorage.removeItem('userType');
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
@@ -270,25 +272,39 @@ export default function StudentDashboard() {
                           subjectAssignments.map(a => {
                             const status = getAssignmentStatus(a);
                             return (
-                              <div key={a.id} className={`p-3 border rounded-lg flex justify-between items-center ${getStatusColor(status)}`}>
-                                <div className="text-left">
-                                  <p className="text-sm font-bold">{a.title}</p>
-                                  <p className="text-[10px] flex items-center opacity-70">
-                                    <Clock className="w-3 h-3 mr-1" /> Due: {a.dueDate}
-                                  </p>
+                              <div key={a.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${getStatusColor(status)}`}>
+                                <div className="flex justify-between items-center w-full">
+                                  <div className="text-left">
+                                    <p className="text-sm font-bold">{a.title}</p>
+                                    <p className="text-[10px] flex items-center opacity-70">
+                                      <Clock className="w-3 h-3 mr-1" /> Due: {a.dueDate}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {a.fileUrl && (
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => window.open(a.fileUrl, '_blank')}>
+                                        <FileDown className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="h-8 text-[10px] font-bold"
+                                      onClick={() => {
+                                        setSelectedSubject(s);
+                                        setSelectedAssignmentId(a.id);
+                                        setDescription(`Assignment: ${a.title}`);
+                                      }}
+                                    >
+                                      {status === 'Completed' ? 'Resubmit' : 'Open'}
+                                    </Button>
+                                  </div>
                                 </div>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-8 text-[10px] font-bold"
-                                  onClick={() => {
-                                    setSelectedSubject(s);
-                                    setSelectedAssignmentId(a.id);
-                                    setDescription(`Assignment: ${a.title}`);
-                                  }}
-                                >
-                                  {status === 'Completed' ? 'Resubmit' : 'Open'}
-                                </Button>
+                                {a.fileUrl && (
+                                  <p className="text-[9px] italic opacity-60 flex items-center">
+                                    <FileText className="w-3 h-3 mr-1" /> Attached: {a.fileName}
+                                  </p>
+                                )}
                               </div>
                             );
                           })

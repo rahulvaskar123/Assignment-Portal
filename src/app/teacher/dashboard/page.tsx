@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -78,11 +79,18 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const loadData = (subject: string) => {
-    const storedAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-    setAssignments(storedAssignments.filter((a: Assignment) => a.subject === subject));
-    const storedSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
-    setAllSubmissions(storedSubmissions.filter((s: Submission) => s.subject === subject));
+  const loadData = async (subject: string) => {
+    try {
+      const assRes = await fetch('/api/assignments?type=assignments');
+      const allAss = await assRes.json();
+      setAssignments(allAss.filter((a: Assignment) => a.subject === subject));
+
+      const subRes = await fetch('/api/assignments?type=submissions');
+      const allSubs = await subRes.json();
+      setAllSubmissions(allSubs.filter((s: Submission) => s.subject === subject));
+    } catch (e) {
+      toast({ title: "Sync Error", description: "Could not fetch classroom data from S3.", variant: "destructive" });
+    }
   };
 
   useEffect(() => {
@@ -103,10 +111,7 @@ export default function TeacherDashboard() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('userType');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('teacherSubject');
-    localStorage.removeItem('teacherYear');
+    localStorage.clear();
     router.push('/');
   };
 
@@ -139,7 +144,7 @@ export default function TeacherDashboard() {
           body: JSON.stringify({
             fileName: newFile.name,
             contentType: newFile.type,
-            studentId: 'TEACHER', // Use a special prefix for teacher uploads
+            studentId: 'TEACHER',
             subject: teacherSubject,
           }),
         });
@@ -164,11 +169,12 @@ export default function TeacherDashboard() {
         fileName: newFile?.name
       };
 
-      const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-      const updatedAssignments = [...allAssignments, assignment];
-      localStorage.setItem('assignments', JSON.stringify(updatedAssignments));
+      await fetch('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save-assignment', data: assignment }),
+      });
       
-      setAssignments(updatedAssignments.filter(a => a.subject === teacherSubject));
       setIsDialogOpen(false);
       setNewTitle('');
       setNewDesc('');
@@ -179,6 +185,7 @@ export default function TeacherDashboard() {
         title: "AWS Sync Complete",
         description: "Assignment and reference file saved to S3.",
       });
+      loadData(teacherSubject);
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -186,21 +193,21 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleDeleteAssignment = (id: string) => {
-    const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-    const updated = allAssignments.filter((a: Assignment) => a.id !== id);
-    localStorage.setItem('assignments', JSON.stringify(updated));
-    setAssignments(updated.filter((a: Assignment) => a.subject === teacherSubject));
-    toast({ title: "Assignment Deleted", description: "Reference removed." });
+  const handleDeleteAssignment = async (id: string) => {
+    await fetch('/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete-assignment', data: { id } }),
+    });
+    loadData(teacherSubject);
+    toast({ title: "Assignment Deleted", description: "Reference removed from S3." });
   };
 
-  const refreshSubmissions = () => {
+  const refreshSubmissions = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      loadData(teacherSubject);
-      setIsLoading(false);
-      toast({ title: "Updated", description: "Latest student S3 references fetched." });
-    }, 1000);
+    await loadData(teacherSubject);
+    setIsLoading(false);
+    toast({ title: "Updated", description: "Latest student S3 references fetched." });
   };
 
   if (!mounted) return null;
@@ -218,7 +225,7 @@ export default function TeacherDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="outline" className="text-white border-white/20 bg-white/10">
-              <Cloud className="w-3 h-3 mr-1" /> AWS Live
+              <Cloud className="w-3 h-3 mr-1" /> AWS S3 Backend
             </Badge>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -288,7 +295,7 @@ export default function TeacherDashboard() {
         </div>
 
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800">Assignment Monitoring</h2>
+          <h2 className="text-xl font-bold text-slate-800">Assignment Monitoring: {teacherSubject}</h2>
           <Button variant="outline" size="sm" onClick={refreshSubmissions} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} /> Refresh Feed
           </Button>
@@ -297,13 +304,13 @@ export default function TeacherDashboard() {
         <div className="space-y-4">
           {assignments.length > 0 ? (
             assignments.map((assignment) => {
-              const assignmentSubmissions = allSubmissions.filter(s => s.assignmentId === assignment.id || s.fileName.toLowerCase().includes(assignment.title.toLowerCase()));
+              const assignmentSubmissions = allSubmissions.filter(s => s.assignmentId === assignment.id);
               const submissionPercentage = Math.round((assignmentSubmissions.length / ENROLLED_STUDENTS) * 100);
               return (
                 <Card key={assignment.id} className="overflow-hidden border-none shadow-sm">
                   <div className="bg-primary/5 p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-slate-800">{assignment.title}</h3>
+                      <h3 className="text-lg font-bold text-slate-800">{assignment.title} <Badge variant="secondary" className="ml-2 text-[10px]">{assignment.year}</Badge></h3>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> Due: {assignment.dueDate}</span>
                         <span className="flex items-center"><Users className="w-3 h-3 mr-1" /> {assignmentSubmissions.length} / {ENROLLED_STUDENTS} Submitted</span>
@@ -362,7 +369,7 @@ export default function TeacherDashboard() {
           ) : (
             <div className="text-center py-20 bg-white rounded-xl shadow-sm border">
               <PlusCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground font-medium">No assignments yet.</p>
+              <p className="text-muted-foreground font-medium">No assignments yet for {teacherSubject}.</p>
             </div>
           )}
         </div>

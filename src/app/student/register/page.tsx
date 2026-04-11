@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { GraduationCap, ArrowLeft, Loader2, Cloud } from 'lucide-react';
 import Link from 'next/link';
@@ -16,6 +17,7 @@ export default function StudentRegister() {
   const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
+  const [year, setYear] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -27,7 +29,7 @@ export default function StudentRegister() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !studentId || !password) return;
+    if (!name || !studentId || !password || !year) return;
     
     setIsLoading(true);
     const normalizedId = studentId.toUpperCase().trim();
@@ -39,7 +41,7 @@ export default function StudentRegister() {
         body: JSON.stringify({
           action: 'register',
           userType: 'student',
-          userData: { name, studentId: normalizedId, password }
+          userData: { name, studentId: normalizedId, password, year }
         }),
       });
 
@@ -49,6 +51,7 @@ export default function StudentRegister() {
         localStorage.setItem('userType', 'student');
         localStorage.setItem('userId', normalizedId);
         localStorage.setItem('userName', name);
+        localStorage.setItem('userYear', year);
         
         toast({
           title: "AWS Registration Complete",
@@ -118,6 +121,20 @@ export default function StudentRegister() {
                   onChange={(e) => setStudentId(e.target.value)}
                   required 
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="year">Academic Year</Label>
+                <Select value={year} onValueChange={setYear} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1st Year">1st Year</SelectItem>
+                    <SelectItem value="2nd Year">2nd Year</SelectItem>
+                    <SelectItem value="3rd Year">3rd Year</SelectItem>
+                    <SelectItem value="4th Year">4th Year</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>

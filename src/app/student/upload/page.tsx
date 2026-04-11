@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -33,6 +34,8 @@ import { useToast } from '@/hooks/use-toast';
 
 type Submission = {
   id: string;
+  studentId: string;
+  studentName?: string;
   assignmentId?: string;
   subject: string;
   fileName: string;
@@ -62,6 +65,7 @@ const SUBJECTS = [
 export default function StudentDashboard() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
+  const [userYear, setUserYear] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -76,9 +80,10 @@ export default function StudentDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const loadData = () => {
+  const loadData = async () => {
     const storedId = localStorage.getItem('userId');
     const storedName = localStorage.getItem('userName');
+    const storedYear = localStorage.getItem('userYear');
     const userType = localStorage.getItem('userType');
     
     if (!storedId || userType !== 'student') {
@@ -88,12 +93,21 @@ export default function StudentDashboard() {
 
     setUserId(storedId);
     setUserName(storedName || storedId);
+    setUserYear(storedYear || '1st Year');
     
-    const storedSubmissions = JSON.parse(localStorage.getItem(`submissions_${storedId}`) || '[]');
-    setSubmissions(storedSubmissions);
+    try {
+      // Fetch Assignments from S3
+      const assRes = await fetch('/api/assignments?type=assignments');
+      const allAssignments = await assRes.json();
+      setAssignments(allAssignments);
 
-    const allAssignments = JSON.parse(localStorage.getItem('assignments') || '[]');
-    setAssignments(allAssignments);
+      // Fetch Submissions from S3
+      const subRes = await fetch('/api/assignments?type=submissions');
+      const allSubmissions = await subRes.json();
+      setSubmissions(allSubmissions.filter((s: Submission) => s.studentId === storedId));
+    } catch (e) {
+      toast({ title: "Sync Error", description: "Could not fetch classroom data from S3.", variant: "destructive" });
+    }
   };
 
   useEffect(() => {
@@ -101,22 +115,18 @@ export default function StudentDashboard() {
     loadData();
   }, [router]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      loadData();
-      setIsRefreshing(false);
-      toast({
-        title: "Classroom Synced",
-        description: "Your assignment list is up to date.",
-      });
-    }, 800);
+    await loadData();
+    setIsRefreshing(false);
+    toast({
+      title: "Classroom Synced",
+      description: "Latest data fetched from AWS S3.",
+    });
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('userType');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
+    localStorage.clear();
     router.push('/');
   };
 
@@ -137,7 +147,7 @@ export default function StudentDashboard() {
   const handleOpenAssignment = (subj: string, assignment: Assignment) => {
     setSelectedSubject(subj);
     setSelectedAssignmentId(assignment.id);
-    setDescription(`Task: ${assignment.title}`);
+    setDescription(`Notes for: ${assignment.title}`);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -155,7 +165,6 @@ export default function StudentDashboard() {
     setIsUploading(true);
 
     try {
-      // 1. Get Presigned URL
       const presignedRes = await fetch('/api/upload/presigned', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,16 +179,16 @@ export default function StudentDashboard() {
 
       if (!url) throw new Error("Could not get upload permission from AWS.");
 
-      // 2. Upload directly to S3
       await fetch(url, {
         method: 'PUT',
         body: file,
         headers: { 'Content-Type': file.type },
       });
 
-      // 3. Save reference locally
       const newSubmission: Submission = {
         id: Math.random().toString(36).substr(2, 9),
+        studentId: userId,
+        studentName: userName,
         assignmentId: selectedAssignmentId,
         subject: selectedSubject,
         fileName: file.name,
@@ -188,25 +197,22 @@ export default function StudentDashboard() {
         status: 'Submitted'
       };
       
-      const updatedSubmissions = [newSubmission, ...submissions];
-      setSubmissions(updatedSubmissions);
-      localStorage.setItem(`submissions_${userId}`, JSON.stringify(updatedSubmissions));
-
-      const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
-      localStorage.setItem('all_global_submissions', JSON.stringify([
-        { ...newSubmission, studentId: userId, studentName: userName || userId },
-        ...allSubmissions
-      ]));
+      await fetch('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save-submission', data: newSubmission }),
+      });
 
       toast({
         title: "AWS Upload Complete",
-        description: "File securely stored in S3 and Lambda triggered.",
+        description: "Submission saved to cloud registry.",
       });
       
       setFile(null);
       setDescription('');
       setSelectedSubject('');
       setSelectedAssignmentId('');
+      loadData();
     } catch (error: any) {
       toast({
         title: "Upload Error",
@@ -219,7 +225,7 @@ export default function StudentDashboard() {
   };
 
   const getAssignmentStatus = (assignment: Assignment) => {
-    const isCompleted = submissions.some(s => s.assignmentId === assignment.id || (s.subject === assignment.subject && s.fileName.toLowerCase().includes(assignment.title.toLowerCase())));
+    const isCompleted = submissions.some(s => s.assignmentId === assignment.id);
     const isPastDue = new Date(assignment.dueDate) < new Date();
     if (isCompleted) return 'Completed';
     if (isPastDue) return 'Missed';
@@ -234,18 +240,21 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleDeleteSubmission = (id: string) => {
+  const handleDeleteSubmission = async (id: string) => {
     const subToDelete = submissions.find(s => s.id === id);
     if (subToDelete?.status === 'Reviewed') {
       toast({ title: "Action Denied", description: "Reviewed assignments cannot be deleted.", variant: "destructive" });
       return;
     }
-    const updated = submissions.filter(s => s.id !== id);
-    setSubmissions(updated);
-    localStorage.setItem(`submissions_${userId}`, JSON.stringify(updated));
-    const allSubmissions = JSON.parse(localStorage.getItem('all_global_submissions') || '[]');
-    localStorage.setItem('all_global_submissions', JSON.stringify(allSubmissions.filter((s: any) => s.id !== id)));
-    toast({ title: "Submission Deleted", description: "Reference removed from classroom." });
+    
+    await fetch('/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete-submission', data: { id } }),
+    });
+
+    toast({ title: "Submission Deleted", description: "Reference removed from S3." });
+    loadData();
   };
 
   if (!mounted) return null;
@@ -255,12 +264,15 @@ export default function StudentDashboard() {
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-primary font-headline">Student Classroom</h1>
-            <p className="text-muted-foreground">Welcome back, <span className="font-semibold text-primary">{userName || userId}</span></p>
+            <h1 className="text-3xl font-bold text-primary font-headline">Student Dashboard</h1>
+            <p className="text-muted-foreground">
+              Welcome back, <span className="font-semibold text-primary">{userName}</span> 
+              <Badge variant="outline" className="ml-2 text-[10px]">{userYear}</Badge>
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-white text-[10px] py-1 text-green-600 border-green-200">
-              <Cloud className="w-3 h-3 mr-1" /> Storage: AWS S3 Live
+              <Cloud className="w-3 h-3 mr-1" /> AWS Cloud Sync Active
             </Badge>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
               <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
@@ -280,7 +292,8 @@ export default function StudentDashboard() {
           <TabsContent value="classes" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {SUBJECTS.map((s) => {
-                const subjectAssignments = assignments.filter(a => a.subject === s);
+                // FILTER: Only show assignments for the student's year and the current subject card
+                const subjectAssignments = assignments.filter(a => a.subject === s && a.year === userYear);
                 return (
                   <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -288,7 +301,7 @@ export default function StudentDashboard() {
                       <BookOpen className="w-5 h-5 text-primary opacity-50" />
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="text-xs text-muted-foreground">Academic Year • {subjectAssignments.length} Assignments</p>
+                      <p className="text-xs text-muted-foreground">{userYear} • {subjectAssignments.length} Assignment(s)</p>
                       <div className="space-y-2">
                         {subjectAssignments.length > 0 ? (
                           subjectAssignments.map(a => {
@@ -317,7 +330,7 @@ export default function StudentDashboard() {
                             );
                           })
                         ) : (
-                          <div className="text-xs text-muted-foreground italic p-2 bg-slate-50 rounded">No active assignments.</div>
+                          <div className="text-xs text-muted-foreground italic p-2 bg-slate-50 rounded">No assignments for your year yet.</div>
                         )}
                       </div>
                     </CardContent>
@@ -334,7 +347,7 @@ export default function StudentDashboard() {
                       <UploadCloud className="w-5 h-5 mr-2" /> Submit: {assignments.find(a => a.id === selectedAssignmentId)?.title || selectedSubject}
                     </CardTitle>
                     <CardDescription className="text-sm font-medium text-slate-700 mt-2">
-                      Upload your assignment to S3. Lambda will process the metadata automatically.
+                      Upload to AWS S3. Your submission will be recorded in the classroom registry.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
@@ -354,7 +367,7 @@ export default function StudentDashboard() {
                       <div className="flex gap-4">
                         <Button type="submit" className="flex-1" disabled={isUploading || !file || !selectedSubject}>
                           {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                          {isUploading ? "Uploading to AWS..." : "Upload to S3"}
+                          {isUploading ? "Uploading to S3..." : "Upload to AWS Cloud"}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => {
                           setSelectedSubject('');

@@ -265,10 +265,10 @@ export default function StudentDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-primary font-headline">Student Dashboard</h1>
-            <p className="text-muted-foreground">
+            <div className="text-muted-foreground">
               Welcome back, <span className="font-semibold text-primary">{userName}</span> 
               <Badge variant="outline" className="ml-2 text-[10px]">{userYear}</Badge>
-            </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-white text-[10px] py-1 text-green-600 border-green-200">

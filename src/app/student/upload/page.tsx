@@ -96,13 +96,13 @@ export default function StudentDashboard() {
     setUserYear(storedYear || '1st Year');
     
     try {
-      // Fetch Assignments from S3
-      const assRes = await fetch('/api/assignments?type=assignments');
+      // Fetch Assignments from S3 - Use no-store to prevent caching
+      const assRes = await fetch('/api/assignments?type=assignments', { cache: 'no-store' });
       const allAssignments = await assRes.json();
       setAssignments(allAssignments);
 
-      // Fetch Submissions from S3
-      const subRes = await fetch('/api/assignments?type=submissions');
+      // Fetch Submissions from S3 - Use no-store to prevent caching
+      const subRes = await fetch('/api/assignments?type=submissions', { cache: 'no-store' });
       const allSubmissions = await subRes.json();
       setSubmissions(allSubmissions.filter((s: Submission) => s.studentId === storedId));
     } catch (e) {
@@ -265,9 +265,10 @@ export default function StudentDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-primary font-headline">Student Dashboard</h1>
-            <div className="text-muted-foreground flex items-center">
+            <div className="text-muted-foreground flex items-center mt-1">
               Welcome back, <span className="font-semibold text-primary ml-1">{userName}</span> 
-              <Badge variant="outline" className="ml-2 text-[10px] uppercase font-bold tracking-wider">{userYear}</Badge>
+              <span className="mx-2">•</span>
+              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">{userYear}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -294,6 +295,8 @@ export default function StudentDashboard() {
               {SUBJECTS.map((s) => {
                 // FILTER: Only show assignments for the student's year and the current subject card
                 const subjectAssignments = assignments.filter(a => a.subject === s && a.year === userYear);
+                const otherYearAssignments = assignments.filter(a => a.subject === s && a.year !== userYear);
+
                 return (
                   <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -301,7 +304,7 @@ export default function StudentDashboard() {
                       <BookOpen className="w-5 h-5 text-primary opacity-50" />
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="text-xs text-muted-foreground">Class: {userYear} • {subjectAssignments.length} Assignment(s) Available</p>
+                      <p className="text-xs text-muted-foreground">Level: {userYear} • {subjectAssignments.length} Assigned</p>
                       <div className="space-y-2">
                         {subjectAssignments.length > 0 ? (
                           subjectAssignments.map(a => {
@@ -330,7 +333,11 @@ export default function StudentDashboard() {
                             );
                           })
                         ) : (
-                          <div className="text-xs text-muted-foreground italic p-3 bg-slate-50 rounded border-2 border-dashed">No assignments posted for your year yet.</div>
+                          <div className="text-xs text-muted-foreground italic p-3 bg-slate-50 rounded border-2 border-dashed">
+                            {otherYearAssignments.length > 0 
+                              ? `No assignments for ${userYear} (but ${otherYearAssignments.length} found for other years).`
+                              : "No assignments posted yet."}
+                          </div>
                         )}
                       </div>
                     </CardContent>

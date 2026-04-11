@@ -82,11 +82,13 @@ export default function TeacherDashboard() {
 
   const loadData = async (subject: string) => {
     try {
-      const assRes = await fetch('/api/assignments?type=assignments');
+      // Use cache: 'no-store' to ensure we get the latest data from S3
+      const assRes = await fetch('/api/assignments?type=assignments', { cache: 'no-store' });
       const allAss = await assRes.json();
       setAssignments(allAss.filter((a: Assignment) => a.subject === subject));
 
-      const subRes = await fetch('/api/assignments?type=submissions');
+      // Use cache: 'no-store' to ensure we get the latest data from S3
+      const subRes = await fetch('/api/assignments?type=submissions', { cache: 'no-store' });
       const allSubs = await subRes.json();
       setAllSubmissions(allSubs.filter((s: Submission) => s.subject === subject));
     } catch (e) {

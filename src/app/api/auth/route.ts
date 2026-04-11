@@ -8,6 +8,8 @@ import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
  * This acts as a simple database for Student and Teacher profiles.
  */
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const { action, userType, userData } = await req.json();

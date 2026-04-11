@@ -8,6 +8,8 @@ import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
  * This acts as the source of truth for all users.
  */
 
+export const dynamic = 'force-dynamic';
+
 const ASSIGNMENTS_KEY = 'registry/data/assignments.json';
 const SUBMISSIONS_KEY = 'registry/data/submissions.json';
 
@@ -20,7 +22,7 @@ async function getS3Data(key: string) {
     const bodyContents = await response.Body?.transformToString();
     return JSON.parse(bodyContents || '[]');
   } catch (e: any) {
-    if (e instanceof NoSuchKey) return [];
+    if (e instanceof NoSuchKey || (e.name === 'NoSuchKey')) return [];
     throw e;
   }
 }
@@ -41,6 +43,7 @@ export async function GET(req: NextRequest) {
     const data = await getS3Data(key);
     return NextResponse.json(data);
   } catch (error: any) {
+    console.error('Assignments GET Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -79,6 +82,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
+    console.error('Assignments POST Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

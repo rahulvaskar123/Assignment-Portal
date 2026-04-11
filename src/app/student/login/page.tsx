@@ -52,6 +52,7 @@ export default function StudentLogin() {
         localStorage.setItem('userType', 'student');
         localStorage.setItem('userId', data.user.studentId);
         localStorage.setItem('userName', data.user.name);
+        localStorage.setItem('userYear', data.user.year);
         
         toast({
           title: "Login Successful",

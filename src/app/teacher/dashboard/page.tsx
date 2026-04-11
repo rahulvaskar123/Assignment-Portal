@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { 
   Accordion, 
@@ -17,7 +18,6 @@ import {
   AccordionTrigger 
 } from "@/components/ui/accordion";
 import { 
-  Download, 
   LogOut, 
   RefreshCw, 
   FileText, 
@@ -74,6 +74,7 @@ export default function TeacherDashboard() {
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
+  const [targetYear, setTargetYear] = useState('');
   const [newFile, setNewFile] = useState<File | null>(null);
 
   const router = useRouter();
@@ -105,7 +106,8 @@ export default function TeacherDashboard() {
     } else {
       setUserName(storedName || 'Professor');
       setTeacherSubject(storedSubject || 'Unassigned');
-      setTeacherYear(storedYear || 'General');
+      setTeacherYear(storedYear || '1st Year');
+      setTargetYear(storedYear || '1st Year');
       loadData(storedSubject || '');
     }
   }, [router]);
@@ -131,7 +133,7 @@ export default function TeacherDashboard() {
 
   const handlePostAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle || !newDesc || !newDueDate) return;
+    if (!newTitle || !newDesc || !newDueDate || !targetYear) return;
 
     setIsPosting(true);
     let s3Key = '';
@@ -163,7 +165,7 @@ export default function TeacherDashboard() {
         title: newTitle,
         description: newDesc,
         subject: teacherSubject,
-        year: teacherYear,
+        year: targetYear,
         dueDate: newDueDate,
         s3Key,
         fileName: newFile?.name
@@ -183,7 +185,7 @@ export default function TeacherDashboard() {
 
       toast({
         title: "AWS Sync Complete",
-        description: "Assignment and reference file saved to S3.",
+        description: `Assignment posted for ${targetYear}.`,
       });
       loadData(teacherSubject);
     } catch (error: any) {
@@ -245,6 +247,20 @@ export default function TeacherDashboard() {
                     <Textarea id="desc" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Briefly describe the task..." required />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="targetYear">Target Year Level</Label>
+                    <Select value={targetYear} onValueChange={setTargetYear} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1st Year">1st Year</SelectItem>
+                        <SelectItem value="2nd Year">2nd Year</SelectItem>
+                        <SelectItem value="3rd Year">3rd Year</SelectItem>
+                        <SelectItem value="4th Year">4th Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
                     <Input id="dueDate" type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} required />
                   </div>
@@ -282,13 +298,13 @@ export default function TeacherDashboard() {
           </Card>
           <Card className="bg-card shadow-sm border-l-4 border-l-primary">
             <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><CalendarDays className="w-4 h-4 mr-1" /> Year Level</CardDescription>
+              <CardDescription className="flex items-center"><CalendarDays className="w-4 h-4 mr-1" /> My Profile Year</CardDescription>
               <CardTitle className="text-4xl font-bold text-primary">{teacherYear}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="bg-card shadow-sm border-l-4 border-l-green-500">
             <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><Bell className="w-4 h-4 mr-1" /> Active Assignments</CardDescription>
+              <CardDescription className="flex items-center"><Bell className="w-4 h-4 mr-1" /> Subject Posts</CardDescription>
               <CardTitle className="text-4xl font-bold text-green-500">{assignments.length}</CardTitle>
             </CardHeader>
           </Card>

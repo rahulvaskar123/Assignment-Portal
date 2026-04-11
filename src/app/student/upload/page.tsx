@@ -265,9 +265,9 @@ export default function StudentDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-primary font-headline">Student Dashboard</h1>
-            <div className="text-muted-foreground">
-              Welcome back, <span className="font-semibold text-primary">{userName}</span> 
-              <Badge variant="outline" className="ml-2 text-[10px]">{userYear}</Badge>
+            <div className="text-muted-foreground flex items-center">
+              Welcome back, <span className="font-semibold text-primary ml-1">{userName}</span> 
+              <Badge variant="outline" className="ml-2 text-[10px] uppercase font-bold tracking-wider">{userYear}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function StudentDashboard() {
                       <BookOpen className="w-5 h-5 text-primary opacity-50" />
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="text-xs text-muted-foreground">{userYear} • {subjectAssignments.length} Assignment(s)</p>
+                      <p className="text-xs text-muted-foreground">Class: {userYear} • {subjectAssignments.length} Assignment(s) Available</p>
                       <div className="space-y-2">
                         {subjectAssignments.length > 0 ? (
                           subjectAssignments.map(a => {
@@ -330,7 +330,7 @@ export default function StudentDashboard() {
                             );
                           })
                         ) : (
-                          <div className="text-xs text-muted-foreground italic p-2 bg-slate-50 rounded">No assignments for your year yet.</div>
+                          <div className="text-xs text-muted-foreground italic p-3 bg-slate-50 rounded border-2 border-dashed">No assignments posted for your year yet.</div>
                         )}
                       </div>
                     </CardContent>

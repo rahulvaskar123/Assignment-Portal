@@ -28,7 +28,8 @@ import {
   RefreshCw,
   FileDown,
   ChevronRight,
-  Cloud
+  Cloud,
+  AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -96,15 +97,22 @@ export default function StudentDashboard() {
     setUserYear(storedYear || '1st Year');
     
     try {
-      // Fetch Assignments from S3 - Use no-store to prevent caching
-      const assRes = await fetch('/api/assignments?type=assignments', { cache: 'no-store' });
+      // Fetch Assignments from S3 - Disable caching strictly
+      const assRes = await fetch('/api/assignments?type=assignments&t=' + Date.now(), { 
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       const allAssignments = await assRes.json();
-      setAssignments(allAssignments);
+      setAssignments(Array.isArray(allAssignments) ? allAssignments : []);
 
-      // Fetch Submissions from S3 - Use no-store to prevent caching
-      const subRes = await fetch('/api/assignments?type=submissions', { cache: 'no-store' });
+      // Fetch Submissions from S3
+      const subRes = await fetch('/api/assignments?type=submissions&t=' + Date.now(), { 
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       const allSubmissions = await subRes.json();
-      setSubmissions(allSubmissions.filter((s: Submission) => s.studentId === storedId));
+      const studentSubs = Array.isArray(allSubmissions) ? allSubmissions.filter((s: Submission) => s.studentId === storedId) : [];
+      setSubmissions(studentSubs);
     } catch (e) {
       toast({ title: "Sync Error", description: "Could not fetch classroom data from S3.", variant: "destructive" });
     }
@@ -120,8 +128,8 @@ export default function StudentDashboard() {
     await loadData();
     setIsRefreshing(false);
     toast({
-      title: "Classroom Synced",
-      description: "Latest data fetched from AWS S3.",
+      title: "Cloud Registry Synced",
+      description: `Data for ${userYear} updated from S3.`,
     });
   };
 
@@ -147,7 +155,7 @@ export default function StudentDashboard() {
   const handleOpenAssignment = (subj: string, assignment: Assignment) => {
     setSelectedSubject(subj);
     setSelectedAssignmentId(assignment.id);
-    setDescription(`Notes for: ${assignment.title}`);
+    setDescription(`Submission for: ${assignment.title}`);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -204,8 +212,8 @@ export default function StudentDashboard() {
       });
 
       toast({
-        title: "AWS Upload Complete",
-        description: "Submission saved to cloud registry.",
+        title: "Submission Success",
+        description: "File uploaded and recorded in cloud registry.",
       });
       
       setFile(null);
@@ -265,18 +273,17 @@ export default function StudentDashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-primary font-headline">Student Dashboard</h1>
-            <div className="text-muted-foreground flex items-center mt-1">
-              Welcome back, <span className="font-semibold text-primary ml-1">{userName}</span> 
-              <span className="mx-2">•</span>
-              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">{userYear}</Badge>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-muted-foreground">Welcome, <span className="font-semibold text-primary">{userName}</span></span>
+              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider text-primary border-primary/20">{userYear}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-white text-[10px] py-1 text-green-600 border-green-200">
-              <Cloud className="w-3 h-3 mr-1" /> AWS Cloud Sync Active
+            <Badge variant="outline" className="bg-white text-[10px] py-1 text-green-600 border-green-200 hidden sm:flex">
+              <Cloud className="w-3 h-3 mr-1" /> AWS S3 Backend Active
             </Badge>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Sync Cloud
             </Button>
             <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
               <LogOut className="w-4 h-4 mr-2" /> Logout
@@ -293,19 +300,17 @@ export default function StudentDashboard() {
           <TabsContent value="classes" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {SUBJECTS.map((s) => {
-                // FILTER: Only show assignments for the student's year and the current subject card
                 const subjectAssignments = assignments.filter(a => a.subject === s && a.year === userYear);
                 const otherYearAssignments = assignments.filter(a => a.subject === s && a.year !== userYear);
 
                 return (
-                  <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
+                  <Card key={s} className="hover:shadow-md transition-shadow border-l-4 border-l-primary flex flex-col h-full">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-lg font-bold">{s}</CardTitle>
                       <BookOpen className="w-5 h-5 text-primary opacity-50" />
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-xs text-muted-foreground">Level: {userYear} • {subjectAssignments.length} Assigned</p>
-                      <div className="space-y-2">
+                    <CardContent className="space-y-4 flex-1">
+                      <div className="space-y-3">
                         {subjectAssignments.length > 0 ? (
                           subjectAssignments.map(a => {
                             const status = getAssignmentStatus(a);
@@ -318,7 +323,7 @@ export default function StudentDashboard() {
                                       <Clock className="w-3 h-3 mr-1" /> Due: {a.dueDate}
                                     </p>
                                   </div>
-                                  <div className="flex gap-2">
+                                  <div className="flex gap-1">
                                     {a.s3Key && (
                                       <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handlePreview(a.s3Key!)}>
                                         <FileDown className="w-4 h-4" />
@@ -333,11 +338,30 @@ export default function StudentDashboard() {
                             );
                           })
                         ) : (
-                          <div className="text-xs text-muted-foreground italic p-3 bg-slate-50 rounded border-2 border-dashed">
-                            {otherYearAssignments.length > 0 
-                              ? `No assignments for ${userYear} (but ${otherYearAssignments.length} found for other years).`
-                              : "No assignments posted yet."}
+                          <div className="text-xs text-muted-foreground italic p-3 bg-slate-50 rounded border border-dashed text-center">
+                            No assignments currently active for {userYear}.
                           </div>
+                        )}
+
+                        {otherYearAssignments.length > 0 && (
+                          <Accordion type="single" collapsible>
+                            <AccordionItem value="other" className="border-none">
+                              <AccordionTrigger className="text-[10px] py-2 hover:no-underline text-muted-foreground">
+                                <span className="flex items-center"><AlertCircle className="w-3 h-3 mr-1" /> View {otherYearAssignments.length} assignments for other years</span>
+                              </AccordionTrigger>
+                              <AccordionContent className="space-y-2">
+                                {otherYearAssignments.map(a => (
+                                  <div key={a.id} className="p-2 border rounded bg-slate-50/50 flex justify-between items-center opacity-60">
+                                    <div>
+                                      <p className="text-[10px] font-semibold">{a.title}</p>
+                                      <p className="text-[9px]">Target: {a.year}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px]">{a.year}</Badge>
+                                  </div>
+                                ))}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
                         )}
                       </div>
                     </CardContent>
@@ -351,10 +375,10 @@ export default function StudentDashboard() {
                 <Card className="shadow-lg border-primary/30 border-2 animate-in fade-in slide-in-from-bottom-4">
                   <CardHeader className="bg-primary/5 border-b">
                     <CardTitle className="flex items-center text-primary text-xl">
-                      <UploadCloud className="w-5 h-5 mr-2" /> Submit: {assignments.find(a => a.id === selectedAssignmentId)?.title || selectedSubject}
+                      <UploadCloud className="w-5 h-5 mr-2" /> Upload: {assignments.find(a => a.id === selectedAssignmentId)?.title || selectedSubject}
                     </CardTitle>
                     <CardDescription className="text-sm font-medium text-slate-700 mt-2">
-                      Upload to AWS S3. Your submission will be recorded in the classroom registry.
+                      File will be renamed and stored in the secure classroom S3 bucket.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
@@ -364,17 +388,17 @@ export default function StudentDashboard() {
                         <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide any additional notes about your submission..." className="min-h-[80px]" />
                       </div>
                       <div className="space-y-3">
-                        <Label>File Attachment</Label>
+                        <Label>Select File (PDF, ZIP, DOCX)</Label>
                         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
                           <UploadCloud className="w-8 h-8 text-muted-foreground mb-2" />
-                          <p className="text-xs text-muted-foreground">{file ? file.name : "Select PDF, ZIP, or DOCX"}</p>
+                          <p className="text-xs text-muted-foreground px-4 text-center">{file ? file.name : "Click to select or drag and drop"}</p>
                           <input type="file" className="hidden" onChange={handleFileChange} required />
                         </label>
                       </div>
                       <div className="flex gap-4">
                         <Button type="submit" className="flex-1" disabled={isUploading || !file || !selectedSubject}>
                           {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                          {isUploading ? "Uploading to S3..." : "Upload to AWS Cloud"}
+                          {isUploading ? "Syncing with AWS S3..." : "Upload to Cloud"}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => {
                           setSelectedSubject('');
@@ -400,7 +424,7 @@ export default function StudentDashboard() {
                         <div className="bg-primary/10 p-2 rounded-lg text-primary"><BookOpen className="w-5 h-5" /></div>
                         <div className="text-left">
                           <p className="font-bold text-slate-800">{subj}</p>
-                          <p className="text-xs text-muted-foreground">{subjectSubmissions.length} Assignment(s) Submitted</p>
+                          <p className="text-xs text-muted-foreground">{subjectSubmissions.length} Submissions</p>
                         </div>
                       </div>
                     </AccordionTrigger>
@@ -426,7 +450,7 @@ export default function StudentDashboard() {
                             </div>
                           ))
                         ) : (
-                          <div className="py-8 text-center text-sm text-muted-foreground italic">No submissions for this subject yet.</div>
+                          <div className="py-8 text-center text-sm text-muted-foreground italic">No submissions records found in S3.</div>
                         )}
                       </div>
                     </AccordionContent>

@@ -58,6 +58,14 @@ type Assignment = {
   fileName?: string;
 };
 
+// Mumbai University IT Engineering Curriculum
+const COURSE_DATA: Record<string, string[]> = {
+  "1st Year": ["Engineering Mathematics", "Engineering Physics", "C Programming", "Basic Electrical Engineering", "Engineering Mechanics"],
+  "2nd Year": ["Data Structures", "Computer Organization & Architecture", "Database Management System", "Discrete Structures", "Principle of Communication"],
+  "3rd Year": ["Software Engineering", "Computer Network", "Operating System", "Theory of Computation", "Web Development"],
+  "4th Year": ["Big Data Analytics", "Blockchain", "Cloud Computing", "Digital Business Management"]
+};
+
 const ENROLLED_STUDENTS = 67;
 
 export default function TeacherDashboard() {
@@ -71,26 +79,28 @@ export default function TeacherDashboard() {
   const [mounted, setMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // New Assignment Form State
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
   const [targetYear, setTargetYear] = useState('');
+  const [targetSubject, setTargetSubject] = useState('');
   const [newFile, setNewFile] = useState<File | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
 
-  const loadData = async (subject: string) => {
+  const loadData = async () => {
     try {
-      // Use cache: 'no-store' to ensure we get the latest data from S3
-      const assRes = await fetch('/api/assignments?type=assignments', { cache: 'no-store' });
+      const assRes = await fetch('/api/assignments?type=assignments&t=' + Date.now(), { cache: 'no-store' });
       const allAss = await assRes.json();
-      setAssignments(allAss.filter((a: Assignment) => a.subject === subject));
+      // Teacher sees assignments for their primary subject specialty by default, 
+      // but in this model, we'll show everything they've posted across subjects.
+      setAssignments(Array.isArray(allAss) ? allAss : []);
 
-      // Use cache: 'no-store' to ensure we get the latest data from S3
-      const subRes = await fetch('/api/assignments?type=submissions', { cache: 'no-store' });
+      const subRes = await fetch('/api/assignments?type=submissions&t=' + Date.now(), { cache: 'no-store' });
       const allSubs = await subRes.json();
-      setAllSubmissions(allSubs.filter((s: Submission) => s.subject === subject));
+      setAllSubmissions(Array.isArray(allSubs) ? allSubs : []);
     } catch (e) {
       toast({ title: "Sync Error", description: "Could not fetch classroom data from S3.", variant: "destructive" });
     }
@@ -107,10 +117,11 @@ export default function TeacherDashboard() {
       router.push('/teacher/login');
     } else {
       setUserName(storedName || 'Professor');
-      setTeacherSubject(storedSubject || 'Unassigned');
+      setTeacherSubject(storedSubject || '');
       setTeacherYear(storedYear || '1st Year');
       setTargetYear(storedYear || '1st Year');
-      loadData(storedSubject || '');
+      setTargetSubject(storedSubject || '');
+      loadData();
     }
   }, [router]);
 
@@ -135,7 +146,7 @@ export default function TeacherDashboard() {
 
   const handlePostAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle || !newDesc || !newDueDate || !targetYear) return;
+    if (!newTitle || !newDesc || !newDueDate || !targetYear || !targetSubject) return;
 
     setIsPosting(true);
     let s3Key = '';
@@ -149,7 +160,7 @@ export default function TeacherDashboard() {
             fileName: newFile.name,
             contentType: newFile.type,
             studentId: 'TEACHER',
-            subject: teacherSubject,
+            subject: targetSubject,
           }),
         });
         const { url, key } = await presignedRes.json();
@@ -166,7 +177,7 @@ export default function TeacherDashboard() {
         id: Math.random().toString(36).substr(2, 9),
         title: newTitle,
         description: newDesc,
-        subject: teacherSubject,
+        subject: targetSubject,
         year: targetYear,
         dueDate: newDueDate,
         s3Key,
@@ -187,9 +198,9 @@ export default function TeacherDashboard() {
 
       toast({
         title: "AWS Sync Complete",
-        description: `Assignment posted for ${targetYear}.`,
+        description: `Assignment posted for ${targetSubject} (${targetYear}).`,
       });
-      loadData(teacherSubject);
+      loadData();
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -203,15 +214,15 @@ export default function TeacherDashboard() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'delete-assignment', data: { id } }),
     });
-    loadData(teacherSubject);
+    loadData();
     toast({ title: "Assignment Deleted", description: "Reference removed from S3." });
   };
 
   const refreshSubmissions = async () => {
     setIsLoading(true);
-    await loadData(teacherSubject);
+    await loadData();
     setIsLoading(false);
-    toast({ title: "Updated", description: "Latest student S3 references fetched." });
+    toast({ title: "Updated", description: "Latest classroom data fetched from S3." });
   };
 
   if (!mounted) return null;
@@ -224,11 +235,11 @@ export default function TeacherDashboard() {
             <div className="bg-white/20 p-2 rounded-lg"><FileText className="w-8 h-8" /></div>
             <div>
               <h1 className="text-2xl font-bold font-headline">Teacher Workspace</h1>
-              <p className="text-sm text-white/80">{userName} | {teacherSubject}</p>
+              <p className="text-sm text-white/80">{userName} | Multi-Class Hub</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Badge variant="outline" className="text-white border-white/20 bg-white/10">
+            <Badge variant="outline" className="text-white border-white/20 bg-white/10 hidden md:flex">
               <Cloud className="w-3 h-3 mr-1" /> AWS S3 Backend
             </Badge>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -241,43 +252,53 @@ export default function TeacherDashboard() {
                 <DialogHeader><DialogTitle>New Assignment</DialogTitle></DialogHeader>
                 <form onSubmit={handlePostAssignment} className="space-y-4 pt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input id="title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. AWS Final Lab" required />
+                    <Label htmlFor="title">Assignment Title</Label>
+                    <Input id="title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Lab 1: Data structures" required />
                   </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Target Year</Label>
+                      <Select value={targetYear} onValueChange={(val) => {
+                        setTargetYear(val);
+                        setTargetSubject(''); // Reset subject when year changes
+                      }} required>
+                        <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(COURSE_DATA).map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Subject</Label>
+                      <Select value={targetSubject} onValueChange={setTargetSubject} required disabled={!targetYear}>
+                        <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                        <SelectContent>
+                          {targetYear && COURSE_DATA[targetYear].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="desc">Description</Label>
                     <Textarea id="desc" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Briefly describe the task..." required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="targetYear">Target Year Level</Label>
-                    <Select value={targetYear} onValueChange={setTargetYear} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1st Year">1st Year</SelectItem>
-                        <SelectItem value="2nd Year">2nd Year</SelectItem>
-                        <SelectItem value="3rd Year">3rd Year</SelectItem>
-                        <SelectItem value="4th Year">4th Year</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
                     <Input id="dueDate" type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
-                    <Label>Reference Document (Optional)</Label>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border transition-colors">
-                      <UploadCloud className="w-6 h-6 text-muted-foreground mb-1" />
-                      <p className="text-[10px] text-muted-foreground">{newFile ? newFile.name : "Attach Reference File"}</p>
+                    <Label>Reference (Optional)</Label>
+                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 border-border">
+                      <UploadCloud className="w-5 h-5 text-muted-foreground mb-1" />
+                      <p className="text-[10px] text-muted-foreground">{newFile ? newFile.name : "Attach File"}</p>
                       <input type="file" className="hidden" onChange={(e) => setNewFile(e.target.files?.[0] || null)} />
                     </label>
                   </div>
                   <DialogFooter>
                     <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isPosting}>
-                      {isPosting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      {isPosting ? "Uploading to S3..." : "Announce to Class"}
+                      {isPosting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Post to Classroom"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -291,103 +312,93 @@ export default function TeacherDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-card shadow-sm border-l-4 border-l-accent">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><Users className="w-4 h-4 mr-1" /> Enrolled Students</CardDescription>
-              <CardTitle className="text-4xl font-bold text-accent">{ENROLLED_STUDENTS}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="bg-card shadow-sm border-l-4 border-l-primary">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><CalendarDays className="w-4 h-4 mr-1" /> My Profile Year</CardDescription>
-              <CardTitle className="text-4xl font-bold text-primary">{teacherYear}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card className="bg-card shadow-sm border-l-4 border-l-green-500">
-            <CardHeader className="pb-2">
-              <CardDescription className="flex items-center"><Bell className="w-4 h-4 mr-1" /> Subject Posts</CardDescription>
-              <CardTitle className="text-4xl font-bold text-green-500">{assignments.length}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-800">Assignment Monitoring: {teacherSubject}</h2>
+          <h2 className="text-xl font-bold text-slate-800">Global Assignment Registry</h2>
           <Button variant="outline" size="sm" onClick={refreshSubmissions} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} /> Refresh Feed
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} /> Sync Cloud
           </Button>
         </div>
 
-        <div className="space-y-4">
-          {assignments.length > 0 ? (
-            assignments.map((assignment) => {
-              const assignmentSubmissions = allSubmissions.filter(s => s.assignmentId === assignment.id);
-              const submissionPercentage = Math.round((assignmentSubmissions.length / ENROLLED_STUDENTS) * 100);
-              return (
-                <Card key={assignment.id} className="overflow-hidden border-none shadow-sm">
-                  <div className="bg-primary/5 p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-slate-800">{assignment.title} <Badge variant="secondary" className="ml-2 text-[10px]">{assignment.year}</Badge></h3>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> Due: {assignment.dueDate}</span>
-                        <span className="flex items-center"><Users className="w-3 h-3 mr-1" /> {assignmentSubmissions.length} / {ENROLLED_STUDENTS} Submitted</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {assignment.s3Key && (
-                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handlePreview(assignment.s3Key!)}>
-                          <Eye className="w-3 h-3 mr-1" /> Reference
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-destructive" onClick={() => handleDeleteAssignment(assignment.id)}>
-                        <Trash2 className="w-3 h-3 mr-1" /> Remove Post
-                      </Button>
-                      <Badge variant="outline" className="bg-white">{submissionPercentage}% Turnover</Badge>
-                    </div>
-                  </div>
-                  <CardContent className="p-0">
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="submissions" className="border-none">
-                        <AccordionTrigger className="px-6 py-3 hover:no-underline text-sm font-medium text-primary">View Student Submissions</AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-0">
-                          {assignmentSubmissions.length > 0 ? (
-                            <div className="divide-y border rounded-lg overflow-hidden bg-slate-50/30">
-                              {assignmentSubmissions.map((sub) => (
-                                <div key={sub.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50 transition-colors">
-                                  <div className="flex items-center gap-3">
-                                    <div className="bg-white p-2 rounded-full border shadow-sm"><User className="w-4 h-4 text-accent" /></div>
-                                    <div>
-                                      <p className="text-sm font-bold text-slate-700">{sub.studentName || sub.studentId}</p>
-                                      <p className="text-[10px] text-muted-foreground font-mono">{sub.studentId}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex-1 px-4 min-w-0">
-                                    <p className="text-xs font-medium truncate text-slate-600">{sub.fileName}</p>
-                                    <p className="text-[10px] text-muted-foreground">Submitted on {sub.date}</p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-8" onClick={() => handlePreview(sub.s3Key)}>
-                                      <ExternalLink className="w-4 h-4 mr-1" /> Review S3 File
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
+        <div className="space-y-6">
+          {Object.keys(COURSE_DATA).map(year => {
+            const yearAssignments = assignments.filter(a => a.year === year);
+            if (yearAssignments.length === 0) return null;
+
+            return (
+              <div key={year} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-accent" />
+                  <h3 className="text-lg font-bold text-slate-700">{year} Posts</h3>
+                  <Badge variant="outline" className="text-[10px]">{yearAssignments.length} Assignments</Badge>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {yearAssignments.map((assignment) => {
+                    const assignmentSubmissions = allSubmissions.filter(s => s.assignmentId === assignment.id);
+                    return (
+                      <Card key={assignment.id} className="overflow-hidden border-none shadow-sm">
+                        <div className="bg-primary/5 p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-accent hover:bg-accent text-[10px]">{assignment.subject}</Badge>
+                              <h3 className="text-sm font-bold text-slate-800">{assignment.title}</h3>
                             </div>
-                          ) : (
-                            <div className="py-8 text-center text-sm text-muted-foreground italic border-2 border-dashed rounded-lg">No submissions yet.</div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </CardContent>
-                </Card>
-              );
-            })
-          ) : (
+                            <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                              <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> Due: {assignment.dueDate}</span>
+                              <span className="flex items-center"><Users className="w-3 h-3 mr-1" /> {assignmentSubmissions.length} Submissions</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {assignment.s3Key && (
+                              <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={() => handlePreview(assignment.s3Key!)}>
+                                <Eye className="w-3 h-3 mr-1" /> Reference
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm" className="h-7 text-[10px] text-destructive hover:text-destructive" onClick={() => handleDeleteAssignment(assignment.id)}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Remove
+                            </Button>
+                          </div>
+                        </div>
+                        <CardContent className="p-0">
+                          <Accordion type="single" collapsible>
+                            <AccordionItem value="submissions" className="border-none">
+                              <AccordionTrigger className="px-6 py-2 hover:no-underline text-xs font-medium text-primary">View Student Submissions</AccordionTrigger>
+                              <AccordionContent className="px-6 pb-4 pt-0">
+                                {assignmentSubmissions.length > 0 ? (
+                                  <div className="divide-y border rounded overflow-hidden bg-slate-50/30">
+                                    {assignmentSubmissions.map((sub) => (
+                                      <div key={sub.id} className="p-3 flex justify-between items-center hover:bg-slate-50">
+                                        <div className="flex items-center gap-3">
+                                          <div className="bg-white p-1.5 rounded-full border shadow-sm text-accent"><User className="w-3 h-3" /></div>
+                                          <div>
+                                            <p className="text-xs font-bold text-slate-700">{sub.studentName || sub.studentId}</p>
+                                            <p className="text-[9px] text-muted-foreground">{sub.date}</p>
+                                          </div>
+                                        </div>
+                                        <Button variant="ghost" size="sm" className="text-primary h-7 text-[10px]" onClick={() => handlePreview(sub.s3Key)}>
+                                          <ExternalLink className="w-3 h-3 mr-1" /> Review S3
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="py-4 text-center text-[10px] text-muted-foreground italic">No submissions yet.</div>
+                                )}
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {assignments.length === 0 && (
             <div className="text-center py-20 bg-white rounded-xl shadow-sm border">
               <PlusCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground font-medium">No assignments yet for {teacherSubject}.</p>
+              <p className="text-muted-foreground font-medium">Your Global Registry is empty. Post your first assignment!</p>
             </div>
           )}
         </div>

@@ -13,6 +13,14 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
+// Mumbai University IT Engineering Curriculum
+const COURSE_DATA: Record<string, string[]> = {
+  "1st Year": ["Engineering Mathematics", "Engineering Physics", "C Programming", "Basic Electrical Engineering", "Engineering Mechanics"],
+  "2nd Year": ["Data Structures", "Computer Organization & Architecture", "Database Management System", "Discrete Structures", "Principle of Communication"],
+  "3rd Year": ["Software Engineering", "Computer Network", "Operating System", "Theory of Computation", "Web Development"],
+  "4th Year": ["Big Data Analytics", "Blockchain", "Cloud Computing", "Digital Business Management"]
+};
+
 export default function TeacherRegister() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -98,7 +106,7 @@ export default function TeacherRegister() {
             <UserCog className="w-10 h-10 mx-auto text-accent mb-2" />
             <CardTitle className="text-2xl font-headline text-accent">Teacher Registration</CardTitle>
             <CardDescription>
-              Set up your cloud-hosted classroom profile
+              Set up your profile and select your primary classroom specialty
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -116,30 +124,27 @@ export default function TeacherRegister() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="subject">Subject Specialty</Label>
-                  <Select value={subject} onValueChange={setSubject} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Big Data Analytics">Big Data Analytics</SelectItem>
-                      <SelectItem value="Blockchain">Blockchain</SelectItem>
-                      <SelectItem value="Cloud Computing">Cloud Computing</SelectItem>
-                      <SelectItem value="Digital Business Management">Digital Business Management</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="year">Teaching Year</Label>
-                  <Select value={year} onValueChange={setYear} required>
+                  <Label htmlFor="year">Primary Year Specialty</Label>
+                  <Select value={year} onValueChange={(val) => {
+                    setYear(val);
+                    setSubject('');
+                  }} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select Year" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1st Year">1st Year</SelectItem>
-                      <SelectItem value="2nd Year">2nd Year</SelectItem>
-                      <SelectItem value="3rd Year">3rd Year</SelectItem>
-                      <SelectItem value="4th Year">4th Year</SelectItem>
+                      {Object.keys(COURSE_DATA).map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Primary Subject Specialty</Label>
+                  <Select value={subject} onValueChange={setSubject} required disabled={!year}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {year && COURSE_DATA[year].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -151,8 +156,7 @@ export default function TeacherRegister() {
               </div>
 
               <Button type="submit" className="w-full mt-4 bg-accent hover:bg-accent/90" disabled={isLoading}>
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                {isLoading ? "Provisioning AWS Profile..." : "Complete Setup"}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Complete AWS Setup"}
               </Button>
             </form>
           </CardContent>

@@ -10,7 +10,7 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
 1. Create a new, empty repository on your GitHub account.
 2. Open the terminal in this editor.
 3. Run `sh git-push-shortcut.sh`.
-4. When prompted for a password, **paste your Personal Access Token (PAT)**.
+4. When prompted for your PAT, **paste the token you generated** (it will be hidden as you paste).
 5. Once complete, your code is live on GitHub.
 
 ### 2. AWS Amplify Hosting (Frontend & API)

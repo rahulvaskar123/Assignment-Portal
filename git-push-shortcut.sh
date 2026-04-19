@@ -38,8 +38,22 @@ if [ -z "$repo_url" ]; then
     exit 1
 fi
 
+# Ask for the Personal Access Token (PAT)
+echo "Enter your GitHub Personal Access Token (PAT):"
+read -s pat
+
+if [ -z "$pat" ]; then
+    echo "Error: Token is required."
+    exit 1
+fi
+
+# Construct the authenticated URL
+# We strip the https:// and rebuild it with the token
+base_url=$(echo $repo_url | sed 's|https://||')
+auth_url="https://$pat@$base_url"
+
 # Set the remote
-git remote add origin "$repo_url" 2>/dev/null || git remote set-url origin "$repo_url"
+git remote add origin "$auth_url" 2>/dev/null || git remote set-url origin "$auth_url"
 
 # Add all files
 echo "Staging files..."
@@ -54,12 +68,9 @@ git branch -M main
 
 # Push instructions
 echo "---------------------------------------------------"
-echo "IMPORTANT: When prompted for a password, do NOT use your GitHub password."
-echo "PASTE your 'Personal Access Token' (PAT) instead."
-echo "You provided one earlier: ghp_...MaIbg"
+echo "Pushing to GitHub using token authentication..."
 echo "---------------------------------------------------"
 
-echo "Pushing to GitHub..."
 git push -u origin main --force
 
 echo "---------------------------"

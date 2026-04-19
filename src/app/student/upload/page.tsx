@@ -27,7 +27,6 @@ import {
   FileText,
   RefreshCw,
   FileDown,
-  ChevronRight,
   Cloud,
   AlertCircle
 } from 'lucide-react';
@@ -56,7 +55,6 @@ type Assignment = {
   fileName?: string;
 };
 
-// Mumbai University IT Engineering Curriculum
 const COURSE_DATA: Record<string, string[]> = {
   "1st Year": ["Engineering Mathematics", "Engineering Physics", "C Programming", "Basic Electrical Engineering", "Engineering Mechanics"],
   "2nd Year": ["Data Structures", "Computer Organization & Architecture", "Database Management System", "Discrete Structures", "Principle of Communication"],
@@ -67,7 +65,7 @@ const COURSE_DATA: Record<string, string[]> = {
 export default function StudentDashboard() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
-  const [userYear, setUserYear] = useState('');
+  const [userYear, setUserYear] = useState<string>('1st Year');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -95,7 +93,10 @@ export default function StudentDashboard() {
 
     setUserId(storedId);
     setUserName(storedName || storedId);
-    setUserYear(storedYear || '1st Year');
+    
+    // Robust check for year level
+    const validatedYear = (storedYear && COURSE_DATA[storedYear]) ? storedYear : '1st Year';
+    setUserYear(validatedYear);
     
     try {
       const assRes = await fetch('/api/assignments?type=assignments&t=' + Date.now(), { 
@@ -274,7 +275,9 @@ export default function StudentDashboard() {
             <h1 className="text-3xl font-bold text-primary font-headline">Student Dashboard</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-muted-foreground">Welcome, <span className="font-semibold text-primary">{userName}</span></span>
-              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider text-primary border-primary/20">{userYear}</Badge>
+              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider text-primary border-primary/20">
+                {userYear}
+              </Badge>
             </div>
           </div>
           <div className="flex items-center gap-2">

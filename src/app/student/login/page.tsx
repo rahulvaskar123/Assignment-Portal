@@ -52,7 +52,7 @@ export default function StudentLogin() {
         localStorage.setItem('userType', 'student');
         localStorage.setItem('userId', data.user.studentId);
         localStorage.setItem('userName', data.user.name);
-        localStorage.setItem('userYear', data.user.year);
+        localStorage.setItem('userYear', data.user.year || '1st Year');
         
         toast({
           title: "Login Successful",

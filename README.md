@@ -8,6 +8,7 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
 
 ### 1. Source Code Setup
 - Push this entire project to a private repository on **GitHub**, **GitLab**, or **Bitbucket**.
+- You can use the `git-push-shortcut.sh` script in the root directory to do this quickly from the terminal.
 
 ### 2. AWS Amplify Hosting (Frontend & API)
 - Go to the **AWS Management Console** and search for **AWS Amplify**.

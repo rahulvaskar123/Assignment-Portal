@@ -112,7 +112,6 @@ export default function TeacherDashboard() {
 
   const handleLogout = () => {
     localStorage.clear();
-    // Force a full reload to clear any in-memory router state
     window.location.href = '/';
   };
 

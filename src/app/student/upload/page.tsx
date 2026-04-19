@@ -132,7 +132,6 @@ export default function StudentDashboard() {
 
   const handleLogout = () => {
     localStorage.clear();
-    // Force a full reload to clear any in-memory router state
     window.location.href = '/';
   };
 

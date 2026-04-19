@@ -1,3 +1,4 @@
+
 # Classroom Hub: AWS Production Ready
 
 A full-stack enterprise portal for academic assignment management using Next.js, AWS S3, and AWS Lambda.
@@ -21,7 +22,7 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
 - **Environment Variables:** In the Amplify sidebar, go to **"Environment variables"** and add:
   - `AWS_ACCESS_KEY_ID`: Your IAM user access key.
   - `AWS_SECRET_ACCESS_KEY`: Your IAM user secret key.
-  - `AWS_REGION`: e.g., `ap-south-1`.
+  - `AWS_REGION`: The region where your S3 bucket is located (e.g., `ap-south-1`). **CRITICAL: This must match your bucket location.**
   - `S3_BUCKET_NAME`: The name of your S3 bucket.
 - Click **"Save and deploy"**.
 
@@ -54,6 +55,12 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
                                          V (S3 Event Trigger)
                                    [ AWS Lambda ] (Metadata Logger)
 ```
+
+## 🛠️ Troubleshooting "Specified Endpoint" Error
+If you see "The bucket you are attempting to access must be addressed using the specified endpoint":
+1. Check your S3 bucket's **Properties** tab to find its exact **AWS Region** (e.g., `us-east-1`).
+2. Update the `AWS_REGION` environment variable in your `.env` (locally) or AWS Amplify Console to match this region exactly.
+3. Restart your development server or redeploy your app.
 
 ## 🛠️ Verification
 1. **Cloud Sync:** Log in and click "Sync Cloud" to fetch data from S3.

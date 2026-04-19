@@ -25,7 +25,13 @@ export async function POST(req: NextRequest) {
           Key: key,
         }));
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
-      } catch (e) {
+      } catch (e: any) {
+        // Handle region mismatch errors specifically
+        if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
+          return NextResponse.json({ 
+            error: 'AWS Region Mismatch: Please ensure your AWS_REGION environment variable matches your S3 bucket location.' 
+          }, { status: 500 });
+        }
         // User doesn't exist, proceed to register
       }
 
@@ -57,7 +63,12 @@ export async function POST(req: NextRequest) {
         } else {
           return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
+          return NextResponse.json({ 
+            error: 'AWS Region Mismatch: Please check your S3 bucket region configuration.' 
+          }, { status: 500 });
+        }
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
     }

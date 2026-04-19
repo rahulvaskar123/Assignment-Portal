@@ -47,6 +47,16 @@ If the app loads but you cannot login:
 ]
 ```
 
+## 🗑️ Managing Your Deployment
+
+### How to Delete the App from AWS Amplify
+1. Open the **AWS Management Console**.
+2. Navigate to **AWS Amplify**.
+3. Select your app from the list.
+4. On the top right of the app dashboard, click the **"Actions"** dropdown menu.
+5. Select **"Delete app"**.
+6. Type 'delete' (or the required confirmation text) and confirm. This will stop hosting and delete the Amplify resources, but it will **not** delete your S3 bucket or GitHub repository.
+
 ## 📂 Architecture Overview
 ```
 [ Frontend (AWS Amplify) ] 

@@ -28,7 +28,8 @@ import {
   RefreshCw,
   FileDown,
   Cloud,
-  AlertCircle
+  AlertCircle,
+  Server
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -94,7 +95,6 @@ export default function StudentDashboard() {
     setUserId(storedId);
     setUserName(storedName || storedId);
     
-    // Robust check for year level
     const validatedYear = (storedYear && COURSE_DATA[storedYear]) ? storedYear : '1st Year';
     setUserYear(validatedYear);
     
@@ -268,7 +268,7 @@ export default function StudentDashboard() {
   const currentYearSubjects = COURSE_DATA[userYear] || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12 pb-24 relative">
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -458,6 +458,14 @@ export default function StudentDashboard() {
             </Accordion>
           </TabsContent>
         </Tabs>
+      </div>
+
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+        <div className="flex items-center px-4 py-2 bg-white/90 backdrop-blur shadow-lg border rounded-full text-[10px] font-mono text-slate-500 gap-3">
+          <div className="flex items-center gap-1"><Server className="w-3 h-3" /> AP-SOUTH-1 LAMBDA</div>
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+          <div className="opacity-50 font-bold uppercase">Cloud Active</div>
+        </div>
       </div>
     </div>
   );

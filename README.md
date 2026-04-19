@@ -1,43 +1,22 @@
 
-# Student Assignment Submission Portal (AWS Cloud Ready)
+# Student Assignment Submission Portal (AWS Production Ready)
 
-A full-stack portal for academic assignment management using Next.js and AWS (S3 & Lambda).
+A full-stack enterprise portal for academic assignment management using Next.js, AWS S3, and AWS Lambda.
 
-## 🚀 AWS Cloud Setup (The "Baby Steps" Guide)
+## 🚀 Deployment Overview
 
-Follow these steps to connect your app to the cloud:
+This project is architected for the **AWS Cloud**. While it can be previewed locally or on Firebase, its "Source of Truth" is the AWS environment.
 
-### 1. Create S3 Bucket (The Storage)
-- Go to [S3 Console](https://s3.console.aws.amazon.com/s3/home).
-- Click **Create bucket**.
-- **Name:** Choose a unique name (e.g., `my-assignment-bucket-xyz`). This is your `S3_BUCKET_NAME`.
-- **Region:** Select **ap-south-1** (Mumbai). This is your `AWS_REGION`.
-- Click **Create bucket**.
+### 1. Storage & Database (AWS S3)
+- **Files:** All assignments are stored in S3 using a strict metadata-encoded naming convention.
+- **Registry:** User profiles, assignment lists, and submission history are stored as persistent JSON objects in the `registry/` folder of your S3 bucket.
 
-### 2. Configure S3 CORS (CRITICAL)
-Without this, your browser will block the upload.
-- Click your bucket name -> **Permissions** tab -> **CORS** section -> **Edit**.
-- Paste this JSON:
-```json
-[
-  {
-    "AllowedHeaders": ["*"],
-    "AllowedMethods": ["PUT", "GET", "POST"],
-    "AllowedOrigins": ["*"],
-    "ExposeHeaders": []
-  }
-]
-```
+### 2. Processing (AWS Lambda)
+- **Metadata Extraction:** Triggered by S3 events to log submission details.
+- **SSR Runtime:** The frontend API routes act as serverless functions (hosting on AWS Amplify uses Lambda @ Edge).
 
-### 3. Create Lambda Function (The Brain)
-- Go to [Lambda Console](https://console.aws.amazon.com/lambda/home).
-- Click **Create function** -> Node.js 18+.
-- **Add Trigger:** Click "+ Add trigger", select **S3**, select your bucket name.
-- **Event Type:** "All object create events".
-- **Code:** Copy the code from `src/lambda/handler.js` in this project and paste it into the Lambda code editor. Click **Deploy**.
-
-### 4. Set Environment Variables
-Update your `.env` file in the root directory:
+### 3. Environment Configuration
+Update your `.env` for production:
 ```env
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
@@ -45,17 +24,22 @@ AWS_REGION=ap-south-1
 S3_BUCKET_NAME=your_bucket_name
 ```
 
-## 📂 Cloud Storage Structure
+## 📂 Architecture Diagram
 
-Your data is organized inside your S3 bucket as follows:
-- `registry/students/`: Contains JSON files for every registered student.
-- `registry/teachers/`: Contains JSON files for every registered teacher.
-- `STUDENTID_SUBJECT_TIMESTAMP_FILENAME.EXT`: These are the actual assignment files.
+```
+[ Frontend (Amplify/NextJS) ] 
+      |
+      |-- [ Auth & Data Registry ] --> AWS S3 (registry/data/*.json)
+      |-- [ File Uploads ] ----------> AWS S3 (Bucket Root)
+                                         |
+                                         V
+                                   [ AWS Lambda ] (Metadata Processor)
+```
 
 ## 🛠️ Verification Checklist
-1. **Login:** Does the login work from different browsers? (If yes, S3 Auth is working!)
-2. **Upload:** Check your **S3 Bucket** -> The file should appear instantly with the naming convention.
-3. **Logs:** Check your **Lambda Logs** in CloudWatch -> You should see the metadata extraction in action.
+1. **Multi-User Sync:** Post an assignment as a Teacher and verify it appears instantly on the Student's dashboard (filtered by Year).
+2. **Cloud Persistence:** Log out, clear local storage, and log back in—your data should restore from S3 via the "Sync Cloud" button.
+3. **Naming Convention:** Verify uploaded files follow the `STUID_SUBJ_TS_NAME` format in your S3 console.
 
-## 🔐 Security Note
-For this prototype, user passwords are saved in plain text within the S3 registry JSON files. In a production environment, you should hash passwords before saving them or use a dedicated service like **AWS Cognito**.
+## 🔐 Security 
+User data is secured via S3 IAM policies and Server-Side API routes. For high-security production, migration to AWS Cognito and DynamoDB is recommended.

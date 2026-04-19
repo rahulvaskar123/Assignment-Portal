@@ -1,34 +1,30 @@
 
-# Classroom Hub: AWS Production Ready
+# Classroom Hub: AWS Deployment Guide
 
-A full-stack enterprise portal for academic assignment management using Next.js, AWS S3, and AWS Lambda.
+This project is optimized for deployment on AWS Amplify using S3 for storage and Auth.
 
-## 🚀 AWS Free Tier Deployment Guide
+## 🚀 Deployment Steps
 
-This project is architected to run entirely within the **AWS Free Tier**. Follow these steps to move from local development to the live AWS Cloud.
+### 1. Update Environment Variables in Amplify
+Amplify reserves the `AWS_` prefix. You **must** use these exact names in the Amplify Console under **App Settings > Environment Variables**:
 
-### 1. Source Code Setup (Direct from Terminal)
-1. Create a new, empty repository on your GitHub account.
-2. Open the terminal in this editor.
-3. Run `sh git-push-shortcut.sh`.
-4. When prompted, provide your GitHub URL and Personal Access Token (PAT).
+- `MY_AWS_ACCESS_KEY_ID`: Your IAM User Access Key
+- `MY_AWS_SECRET_ACCESS_KEY`: Your IAM User Secret Key
+- `MY_AWS_REGION`: Your S3 bucket region (e.g., `ap-south-1`)
+- `S3_BUCKET_NAME`: The name of your S3 bucket
+- `GEMINI_API_KEY`: `AIzaSyB4UWUcTreh6y4PemKvyxNIQakbQtq6iWQ`
 
-### 2. AWS Amplify Hosting (Frontend & API)
-- Go to the **AWS Management Console** and search for **AWS Amplify**.
-- Click **"Create new app"** -> **"Host web app"**.
-- Connect your GitHub repository and select the `main` branch.
-- **Environment Variables (CRITICAL):** In the Amplify sidebar, go to **"App settings"** -> **"Environment variables"**. 
-- **NOTE:** Amplify reserves the `AWS_` prefix. You MUST use these exact names:
-  - `MY_AWS_ACCESS_KEY_ID`: Your IAM user access key.
-  - `MY_AWS_SECRET_ACCESS_KEY`: Your IAM user secret key.
-  - `MY_AWS_REGION`: The region of your S3 bucket (e.g., `ap-south-1`).
-  - `S3_BUCKET_NAME`: The name of your S3 bucket.
-  - `GEMINI_API_KEY`: Your Google Gemini AI API key.
-- Click **"Save and deploy"**.
+### 2. Push Changes to GitHub
+Run the following command in the terminal to sync these code changes with your repository:
+```bash
+sh git-push-shortcut.sh
+```
 
-### 3. AWS S3 Configuration (Storage)
-- Create a bucket in S3.
-- **CORS:** Go to the bucket's **Permissions** tab -> **CORS** and paste:
+### 3. Redeploy in Amplify
+After pushing, go to the Amplify Console and click **"Redeploy this version"** to apply the new environment variable logic.
+
+### 4. S3 Bucket Permissions (CORS)
+Ensure your S3 bucket has the following CORS configuration:
 ```json
 [
     {
@@ -39,11 +35,3 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
     }
 ]
 ```
-
-### 4. Troubleshooting Login Failures
-1. **Reserved Prefix Error:** Ensure you used `MY_AWS_ACCESS_KEY_ID` and NOT `AWS_ACCESS_KEY_ID`.
-2. **Redeploy:** If you update variables, you must click "Redeploy this version" in Amplify.
-3. **Region Check:** Ensure `MY_AWS_REGION` matches the "AWS Region" shown in your S3 Bucket properties.
-
-## 🗑️ Managing Your Deployment
-- To delete the app, go to the **AWS Amplify** dashboard, click **"Actions"** -> **"Delete app"**.

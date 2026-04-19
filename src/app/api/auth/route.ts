@@ -5,7 +5,6 @@ import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 /**
  * API for AWS S3-based User Registry
- * This acts as a simple database for Student and Teacher profiles.
  */
 
 export const dynamic = 'force-dynamic';
@@ -33,15 +32,11 @@ export async function POST(req: NextRequest) {
         }));
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       } catch (e: any) {
+        // If not found, we can proceed
         if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
           return NextResponse.json({ 
             error: `AWS Region Mismatch: The bucket is in a different region than '${S3_CONFIG.region}'. Please update your MY_AWS_REGION environment variable.` 
           }, { status: 500 });
-        }
-        if (e.name === 'AccessDenied' || e.$metadata?.httpStatusCode === 403) {
-          return NextResponse.json({ 
-            error: 'AWS Access Denied: Please check your IAM User permissions for the S3 bucket.' 
-          }, { status: 403 });
         }
       }
 
@@ -78,7 +73,7 @@ export async function POST(req: NextRequest) {
         if (e.name === 'NoSuchKey' || e.name === 'NotFound') {
           return NextResponse.json({ error: 'User not found in AWS Registry.' }, { status: 404 });
         }
-        return NextResponse.json({ error: `AWS Error: ${e.name || 'Unknown Connection Error'}` }, { status: 500 });
+        return NextResponse.json({ error: `AWS Connection Error: ${e.name}` }, { status: 500 });
       }
     }
 

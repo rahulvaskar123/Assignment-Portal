@@ -18,5 +18,5 @@ export const s3Client = new S3Client({
 
 export const S3_CONFIG = {
   region: region,
-  bucketName: process.env.S3_BUCKET_NAME || "assignment-uploads",
+  bucketName: process.env.S3_BUCKET_NAME || "",
 };

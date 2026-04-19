@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -15,7 +14,7 @@ import {
   AccordionContent, 
   AccordionItem, 
   AccordionTrigger 
-} from "@/accordion";
+} from "@/components/ui/accordion";
 import { 
   UploadCloud, 
   Loader2, 

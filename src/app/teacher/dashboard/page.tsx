@@ -16,7 +16,7 @@ import {
   AccordionContent, 
   AccordionItem, 
   AccordionTrigger 
-} from "@/components/ui/accordion";
+} from "@/accordion";
 import { 
   LogOut, 
   RefreshCw, 
@@ -58,7 +58,6 @@ type Assignment = {
   fileName?: string;
 };
 
-// Mumbai University IT Engineering Curriculum
 const COURSE_DATA: Record<string, string[]> = {
   "1st Year": ["Engineering Mathematics", "Engineering Physics", "C Programming", "Basic Electrical Engineering", "Engineering Mechanics"],
   "2nd Year": ["Data Structures", "Computer Organization & Architecture", "Database Management System", "Discrete Structures", "Principle of Communication"],
@@ -66,12 +65,8 @@ const COURSE_DATA: Record<string, string[]> = {
   "4th Year": ["Big Data Analytics", "Blockchain", "Cloud Computing", "Digital Business Management"]
 };
 
-const ENROLLED_STUDENTS = 67;
-
 export default function TeacherDashboard() {
   const [userName, setUserName] = useState('');
-  const [teacherSubject, setTeacherSubject] = useState('');
-  const [teacherYear, setTeacherYear] = useState('');
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +74,6 @@ export default function TeacherDashboard() {
   const [mounted, setMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // New Assignment Form State
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
@@ -94,8 +88,6 @@ export default function TeacherDashboard() {
     try {
       const assRes = await fetch('/api/assignments?type=assignments&t=' + Date.now(), { cache: 'no-store' });
       const allAss = await assRes.json();
-      // Teacher sees assignments for their primary subject specialty by default, 
-      // but in this model, we'll show everything they've posted across subjects.
       setAssignments(Array.isArray(allAss) ? allAss : []);
 
       const subRes = await fetch('/api/assignments?type=submissions&t=' + Date.now(), { cache: 'no-store' });
@@ -110,24 +102,19 @@ export default function TeacherDashboard() {
     setMounted(true);
     const userType = localStorage.getItem('userType');
     const storedName = localStorage.getItem('userName');
-    const storedSubject = localStorage.getItem('teacherSubject');
-    const storedYear = localStorage.getItem('teacherYear');
     
     if (userType !== 'teacher') {
-      router.push('/teacher/login');
+      window.location.href = '/teacher/login';
     } else {
       setUserName(storedName || 'Professor');
-      setTeacherSubject(storedSubject || '');
-      setTeacherYear(storedYear || '1st Year');
-      setTargetYear(storedYear || '1st Year');
-      setTargetSubject(storedSubject || '');
       loadData();
     }
   }, [router]);
 
   const handleLogout = () => {
     localStorage.clear();
-    router.push('/');
+    // Force a full reload to clear any in-memory router state
+    window.location.href = '/';
   };
 
   const handlePreview = async (s3Key: string) => {
@@ -261,7 +248,7 @@ export default function TeacherDashboard() {
                       <Label>Target Year</Label>
                       <Select value={targetYear} onValueChange={(val) => {
                         setTargetYear(val);
-                        setTargetSubject(''); // Reset subject when year changes
+                        setTargetSubject('');
                       }} required>
                         <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
                         <SelectContent>

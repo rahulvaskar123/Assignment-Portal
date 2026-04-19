@@ -23,7 +23,9 @@ export default function TeacherLogin() {
   useEffect(() => {
     setMounted(true);
     const userType = localStorage.getItem('userType');
-    if (userType === 'teacher') {
+    const userName = localStorage.getItem('userName');
+    // Only redirect if a valid teacher session exists
+    if (userType === 'teacher' && userName) {
       router.push('/teacher/dashboard');
     }
   }, [router]);
@@ -47,6 +49,7 @@ export default function TeacherLogin() {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        localStorage.clear(); // Clear any previous stale session data
         localStorage.setItem('userType', 'teacher');
         localStorage.setItem('userName', data.user.name);
         localStorage.setItem('teacherSubject', data.user.subject);

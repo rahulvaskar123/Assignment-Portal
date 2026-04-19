@@ -15,7 +15,7 @@ import {
   AccordionContent, 
   AccordionItem, 
   AccordionTrigger 
-} from "@/components/ui/accordion";
+} from "@/accordion";
 import { 
   UploadCloud, 
   Loader2, 
@@ -88,7 +88,7 @@ export default function StudentDashboard() {
     const userType = localStorage.getItem('userType');
     
     if (!storedId || userType !== 'student') {
-      router.push('/student/login');
+      window.location.href = '/student/login';
       return;
     }
 
@@ -133,7 +133,8 @@ export default function StudentDashboard() {
 
   const handleLogout = () => {
     localStorage.clear();
-    router.push('/');
+    // Force a full reload to clear any in-memory router state
+    window.location.href = '/';
   };
 
   const handlePreview = async (s3Key: string) => {

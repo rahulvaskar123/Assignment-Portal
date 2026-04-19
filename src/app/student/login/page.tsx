@@ -23,7 +23,9 @@ export default function StudentLogin() {
   useEffect(() => {
     setMounted(true);
     const userType = localStorage.getItem('userType');
-    if (userType === 'student') {
+    const userId = localStorage.getItem('userId');
+    // Only redirect if a valid student session exists
+    if (userType === 'student' && userId) {
       router.push('/student/upload');
     }
   }, [router]);
@@ -49,6 +51,7 @@ export default function StudentLogin() {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        localStorage.clear(); // Clear any previous stale session data
         localStorage.setItem('userType', 'student');
         localStorage.setItem('userId', data.user.studentId);
         localStorage.setItem('userName', data.user.name);

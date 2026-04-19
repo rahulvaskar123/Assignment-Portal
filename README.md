@@ -7,9 +7,9 @@ This project is optimized for deployment on AWS Amplify using S3 for storage and
 ### 1. Update Environment Variables in Amplify
 Amplify reserves the `AWS_` prefix. You **must** use these exact names in the Amplify Console under **App Settings > Environment Variables**:
 
-- `MY_AWS_ACCESS_KEY_ID`: Your IAM User Access Key
-- `MY_AWS_SECRET_ACCESS_KEY`: Your IAM User Secret Key
-- `MY_AWS_REGION`: Your S3 bucket region (e.g., `ap-south-1`)
+- `MY_AWS_ACCESS_KEY_ID`: (Your Access Key)
+- `MY_AWS_SECRET_ACCESS_KEY`: (Your Secret Key)
+- `MY_AWS_REGION`: `ap-south-1`
 - `S3_BUCKET_NAME`: `my-assignment-portal-2024`
 - `GEMINI_API_KEY`: `AIzaSyB4UWUcTreh6y4PemKvyxNIQakbQtq6iWQ`
 

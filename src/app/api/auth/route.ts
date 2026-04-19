@@ -12,10 +12,10 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    // Validate Environment Variables first
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.S3_BUCKET_NAME) {
+    // Validate Environment Variables (using updated custom prefix)
+    if (!process.env.MY_AWS_ACCESS_KEY_ID || !process.env.MY_AWS_SECRET_ACCESS_KEY || !process.env.S3_BUCKET_NAME) {
       return NextResponse.json({ 
-        error: 'Cloud Configuration Missing: Ensure AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and S3_BUCKET_NAME are set in your Amplify environment variables.' 
+        error: 'Cloud Configuration Missing: Ensure MY_AWS_ACCESS_KEY_ID, MY_AWS_SECRET_ACCESS_KEY, and S3_BUCKET_NAME are set in your Amplify environment variables.' 
       }, { status: 500 });
     }
 
@@ -33,10 +33,9 @@ export async function POST(req: NextRequest) {
         }));
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       } catch (e: any) {
-        // Handle region mismatch or auth errors specifically
         if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
           return NextResponse.json({ 
-            error: `AWS Region Mismatch: The bucket is in a different region than '${S3_CONFIG.region}'. Please update your AWS_REGION environment variable.` 
+            error: `AWS Region Mismatch: The bucket is in a different region than '${S3_CONFIG.region}'. Please update your MY_AWS_REGION environment variable.` 
           }, { status: 500 });
         }
         if (e.name === 'AccessDenied' || e.$metadata?.httpStatusCode === 403) {
@@ -44,7 +43,6 @@ export async function POST(req: NextRequest) {
             error: 'AWS Access Denied: Please check your IAM User permissions for the S3 bucket.' 
           }, { status: 403 });
         }
-        // User doesn't exist (404), proceed to register
       }
 
       await s3Client.send(new PutObjectCommand({
@@ -79,11 +77,6 @@ export async function POST(req: NextRequest) {
         console.error('S3 Login Error:', e);
         if (e.name === 'NoSuchKey' || e.name === 'NotFound') {
           return NextResponse.json({ error: 'User not found in AWS Registry.' }, { status: 404 });
-        }
-        if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
-          return NextResponse.json({ 
-            error: `AWS Region Mismatch: Check your S3 bucket's actual region and update AWS_REGION.` 
-          }, { status: 500 });
         }
         return NextResponse.json({ error: `AWS Error: ${e.name || 'Unknown Connection Error'}` }, { status: 500 });
       }

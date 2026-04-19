@@ -11,29 +11,22 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
 1. Create a new, empty repository on your GitHub account.
 2. Open the terminal in this editor.
 3. Run `sh git-push-shortcut.sh`.
-4. When prompted for your PAT, **paste the token you generated**.
-5. Once complete, your code is live on GitHub.
+4. When prompted, provide your GitHub URL and Personal Access Token (PAT).
 
 ### 2. AWS Amplify Hosting (Frontend & API)
 - Go to the **AWS Management Console** and search for **AWS Amplify**.
 - Click **"Create new app"** -> **"Host web app"**.
 - Connect your GitHub repository and select the `main` branch.
-- Amplify will detect Next.js.
-- **Environment Variables (CRITICAL):** In the Amplify sidebar, go to **"App settings"** -> **"Environment variables"** and add:
-  - `AWS_ACCESS_KEY_ID`: Your IAM user access key.
-  - `AWS_SECRET_ACCESS_KEY`: Your IAM user secret key.
-  - `AWS_REGION`: The region where your S3 bucket is located (e.g., `us-east-1`). **MUST MATCH BUCKET REGION.**
+- **Environment Variables (CRITICAL):** In the Amplify sidebar, go to **"App settings"** -> **"Environment variables"**. 
+- **NOTE:** Amplify reserves the `AWS_` prefix. You MUST use these exact names:
+  - `MY_AWS_ACCESS_KEY_ID`: Your IAM user access key.
+  - `MY_AWS_SECRET_ACCESS_KEY`: Your IAM user secret key.
+  - `MY_AWS_REGION`: The region of your S3 bucket (e.g., `ap-south-1`).
   - `S3_BUCKET_NAME`: The name of your S3 bucket.
+  - `GEMINI_API_KEY`: Your Google Gemini AI API key.
 - Click **"Save and deploy"**.
 
-### 3. Troubleshooting Login Failures
-If the app loads but you cannot login:
-1. **Check Environment Variables:** Ensure the names in Amplify match the list above exactly.
-2. **Region Check:** Go to your S3 bucket in the AWS console, look at the "Properties" tab, and verify the "AWS Region" (e.g., US East (N. Virginia) is `us-east-1`).
-3. **IAM Permissions:** Ensure your IAM User has a policy attached that allows `s3:GetObject` and `s3:PutObject` for the bucket `arn:aws:s3:::your-bucket-name/*`.
-4. **Logs:** In Amplify, go to "Monitoring" -> "CloudWatch Logs" to see specific server-side error messages from the API.
-
-### 4. AWS S3 Configuration (Storage)
+### 3. AWS S3 Configuration (Storage)
 - Create a bucket in S3.
 - **CORS:** Go to the bucket's **Permissions** tab -> **CORS** and paste:
 ```json
@@ -47,23 +40,10 @@ If the app loads but you cannot login:
 ]
 ```
 
+### 4. Troubleshooting Login Failures
+1. **Reserved Prefix Error:** Ensure you used `MY_AWS_ACCESS_KEY_ID` and NOT `AWS_ACCESS_KEY_ID`.
+2. **Redeploy:** If you update variables, you must click "Redeploy this version" in Amplify.
+3. **Region Check:** Ensure `MY_AWS_REGION` matches the "AWS Region" shown in your S3 Bucket properties.
+
 ## 🗑️ Managing Your Deployment
-
-### How to Delete the App from AWS Amplify
-1. Open the **AWS Management Console**.
-2. Navigate to **AWS Amplify**.
-3. Select your app from the list.
-4. On the top right of the app dashboard, click the **"Actions"** dropdown menu.
-5. Select **"Delete app"**.
-6. Type 'delete' (or the required confirmation text) and confirm. This will stop hosting and delete the Amplify resources, but it will **not** delete your S3 bucket or GitHub repository.
-
-## 📂 Architecture Overview
-```
-[ Frontend (AWS Amplify) ] 
-      |
-      |-- [ Auth & Data Registry ] --> AWS S3 (registry/*.json)
-      |-- [ File Uploads ] ----------> AWS S3 (Bucket Root)
-                                         |
-                                         V (S3 Event Trigger)
-                                   [ AWS Lambda ] (Metadata Logger)
-```
+- To delete the app, go to the **AWS Amplify** dashboard, click **"Actions"** -> **"Delete app"**.

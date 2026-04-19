@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AWS Deployment Shortcut Script - Version 1.1
+# AWS Deployment Shortcut Script - Version 1.2
 echo "--- GitHub Push Shortcut ---"
 
 # Check if git is installed
@@ -52,10 +52,11 @@ git commit -m "Initial AWS Deployment" 2>/dev/null || echo "No new changes to co
 # Set branch to main
 git branch -M main
 
-# Push
+# Push instructions
 echo "---------------------------------------------------"
 echo "IMPORTANT: When prompted for a password, do NOT use your GitHub password."
-echo "Use a 'Personal Access Token' (PAT) from GitHub Settings."
+echo "PASTE your 'Personal Access Token' (PAT) instead."
+echo "You provided one earlier: ghp_...MaIbg"
 echo "---------------------------------------------------"
 
 echo "Pushing to GitHub..."

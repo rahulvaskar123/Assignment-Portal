@@ -6,25 +6,27 @@ A full-stack enterprise portal for academic assignment management using Next.js,
 
 This project is architected to run entirely within the **AWS Free Tier**. Follow these steps to move from local development to the live AWS Cloud.
 
-### 1. Source Code Setup
-- Push this entire project to a private repository on **GitHub**, **GitLab**, or **Bitbucket**.
-- You can use the `git-push-shortcut.sh` script in the root directory to do this quickly from the terminal.
+### 1. Source Code Setup (Direct from Terminal)
+1. Create a new, empty repository on your GitHub account.
+2. Open the terminal in this editor.
+3. Run `sh git-push-shortcut.sh`.
+4. When prompted for a password, **paste your Personal Access Token (PAT)**.
+5. Once complete, your code is live on GitHub.
 
 ### 2. AWS Amplify Hosting (Frontend & API)
 - Go to the **AWS Management Console** and search for **AWS Amplify**.
 - Click **"Create new app"** -> **"Host web app"**.
-- Connect your repository and select the branch (usually `main`).
-- Amplify will detect Next.js 15. In the **"Build settings"**, it will use the `amplify.yml` included in this project.
-- **IMPORTANT:** Go to **"Environment variables"** in the Amplify sidebar and add:
+- Connect your GitHub repository and select the `main` branch.
+- Amplify will detect Next.js 15.
+- **Environment Variables:** In the Amplify sidebar, go to **"Environment variables"** and add:
   - `AWS_ACCESS_KEY_ID`: Your IAM user access key.
   - `AWS_SECRET_ACCESS_KEY`: Your IAM user secret key.
   - `AWS_REGION`: e.g., `ap-south-1`.
   - `S3_BUCKET_NAME`: The name of your S3 bucket.
-- Click **"Save and deploy"**. Once finished, Amplify will provide a `https://master.xxx.amplifyapp.com` URL.
+- Click **"Save and deploy"**.
 
 ### 3. AWS S3 Configuration (Storage)
 - Create a bucket in S3 (e.g., `my-classroom-hub-bucket`).
-- **Permissions:** Ensure the IAM user associated with your Access Keys has `AmazonS3FullAccess` policy attached.
 - **CORS:** Go to the bucket's **Permissions** tab -> **CORS** and paste:
 ```json
 [
@@ -36,18 +38,13 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
     }
 ]
 ```
-*(Note: In production, replace `"*"` in AllowedOrigins with your Amplify URL).*
 
 ### 4. AWS Lambda Setup (Background Processing)
-- Go to **AWS Lambda** and click **"Create function"**.
-- Name it `AssignmentMetadataProcessor`, use **Node.js 20.x**.
-- Paste the code from `src/lambda/handler.js` into the Lambda code editor.
-- Click **"Add trigger"** -> select **S3**.
-- Select your bucket and set Event type to **"All object create events"**.
-- Ensure the Lambda's Execution Role has permissions to read from S3.
+- Create a Lambda function named `AssignmentMetadataProcessor` (Node.js 20.x).
+- Paste code from `src/lambda/handler.js`.
+- Add an **S3 Trigger** for your bucket on "All object create events".
 
 ## 📂 Architecture Overview
-
 ```
 [ Frontend (AWS Amplify) ] 
       |
@@ -59,8 +56,5 @@ This project is architected to run entirely within the **AWS Free Tier**. Follow
 ```
 
 ## 🛠️ Verification
-1. **Cloud Sync:** Log in and click "Sync Cloud". If successful, your dashboard will populate from the `registry/` folder in S3.
-2. **Lambda Logs:** After uploading a file, check **CloudWatch Logs** for your Lambda to see the extracted metadata in real-time.
-
-## 🔐 Security 
-For maximum security, ensure your IAM user follows the principle of least privilege. Use the Mumbai University IT Engineering curriculum as the default structure for all classroom data.
+1. **Cloud Sync:** Log in and click "Sync Cloud" to fetch data from S3.
+2. **Lambda Logs:** Check CloudWatch Logs to see real-time metadata extraction.

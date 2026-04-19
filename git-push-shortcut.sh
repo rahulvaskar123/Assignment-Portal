@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AWS Deployment Shortcut Script
+# AWS Deployment Shortcut Script - Version 1.1
 echo "--- GitHub Push Shortcut ---"
 
 # Check if git is installed
@@ -46,20 +46,21 @@ echo "Staging files..."
 git add .
 
 # Commit
-echo "Enter commit message (default: 'Deploy to AWS Amplify'):"
-read commit_msg
-if [ -z "$commit_msg" ]; then
-    commit_msg="Deploy to AWS Amplify"
-fi
-git commit -m "$commit_msg"
+echo "Committing changes..."
+git commit -m "Initial AWS Deployment" 2>/dev/null || echo "No new changes to commit."
 
 # Set branch to main
 git branch -M main
 
 # Push
+echo "---------------------------------------------------"
+echo "IMPORTANT: When prompted for a password, do NOT use your GitHub password."
+echo "Use a 'Personal Access Token' (PAT) from GitHub Settings."
+echo "---------------------------------------------------"
+
 echo "Pushing to GitHub..."
-echo "Note: You may be asked for your GitHub username and Personal Access Token (PAT)."
-git push -u origin main
+git push -u origin main --force
 
 echo "---------------------------"
-echo "Done! Now go to AWS Amplify Console to connect this repository."
+echo "If you saw 'Success', your code is now on GitHub!"
+echo "Next Step: Go to AWS Amplify Console and connect this repository."

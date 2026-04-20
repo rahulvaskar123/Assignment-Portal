@@ -3,8 +3,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 
 /**
  * AWS S3 Client configuration.
- * Local: Reads from .env
- * Production: Reads from Amplify Environment Variables
+ * It strictly uses Environment Variables to prevent "Access Denied" and "Quarantine" issues.
  */
 export const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-south-1",

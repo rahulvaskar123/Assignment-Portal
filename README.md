@@ -25,7 +25,7 @@ If you really want to use a Bucket Policy, you must use **YOUR** specific ARN fo
         {
             "Effect": "Allow",
             "Principal": {
-                "AWS": "PASTE_YOUR_ARN_HERE"
+                "AWS": "arn:aws:iam::837175766175:user/assignment-portal-app"
             },
             "Action": "s3:*",
             "Resource": [
@@ -37,15 +37,16 @@ If you really want to use a Bucket Policy, you must use **YOUR** specific ARN fo
 }
 ```
 
-### 3. S3 CORS Configuration (Required for Uploads)
-Scroll down to the bottom of the **Permissions** tab in your S3 Bucket and edit the **CORS configuration**:
+### 3. S3 CORS Configuration (Fixed)
+Scroll down to the bottom of the **Permissions** tab in your S3 Bucket and edit the **CORS configuration**. Use this exact JSON (note: `ExposeHeaders` is correct):
 ```json
 [
     {
         "AllowedHeaders": ["*"],
-        "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+        "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
         "AllowedOrigins": ["*"],
-        "ExposedHeaders": ["ETag"]
+        "ExposeHeaders": ["ETag", "x-amz-server-side-encryption", "x-amz-request-id", "x-amz-id-2"],
+        "MaxAgeSeconds": 3000
     }
 ]
 ```

@@ -1,32 +1,44 @@
+# 🚀 University Portal - Deployment Guide
 
-# 🚀 University Portal - Workstation Guide
+This application is configured to work in the Cloud using AWS S3 and AWS Amplify. Follow these steps to ensure a successful deployment.
 
-If the login stops working, follow these emergency steps in this order:
+## 🛠️ Step 1: AWS Console Configuration
+Before the app can talk to your bucket, ensure these settings are correct in your AWS S3 Console:
 
-## 🛠️ Step 1: Update Environment Variables
-AWS Lambda and Amplify do not allow you to set custom variables starting with `AWS_`. We now use `NEW_AWS_` prefixes.
+1.  **Bucket Name:** `my-assignment-portal-2024`
+2.  **Region:** `ap-south-1`
+3.  **Permissions Tab -> Block Public Access:** Must be **OFF** (Unchecked).
+4.  **Permissions Tab -> CORS:** Copy and paste this JSON block:
+    ```json
+    [
+        {
+            "AllowedHeaders": ["*"],
+            "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+            "AllowedOrigins": ["*"],
+            "ExposedHeaders": ["ETag"]
+        }
+    ]
+    ```
 
-Update your environment variables in Amplify and your local `.env`:
-1.  `NEW_AWS_ACCESS_KEY_ID`
-2.  `NEW_AWS_SECRET_ACCESS_KEY`
-3.  `NEW_AWS_REGION`
-4.  `NEW_AWS_S3_BUCKET`
+## 🛠️ Step 2: Deployment to AWS Amplify
+When you connect your GitHub repository to AWS Amplify, you **MUST** add these environment variables. Amplify blocks variables starting with `AWS_`, so we use the `NEW_` prefix:
 
-## 🛠️ Step 2: The "Double Refresh"
-1. **Stop the server:** Press `Ctrl+C` in the terminal.
-2. **Verify `.env`:** Make sure there are no spaces or quotes around your keys.
-3. **Start the server:** Run `npm run dev`.
-4. **Hard Refresh:** Press `Ctrl+Shift+R` in your browser.
+1.  Go to **Amplify Console -> Hosting -> Environment variables**.
+2.  Add these exactly as named:
+    *   `GOOGLE_GENAI_API_KEY`
+    *   `NEW_AWS_ACCESS_KEY_ID`
+    *   `NEW_AWS_SECRET_ACCESS_KEY`
+    *   `NEW_AWS_REGION`
+    *   `NEW_AWS_S3_BUCKET`
+3.  Click **Save**, then go to **Build Settings** and ensure your app triggers a redeploy.
 
-## 🛠️ Step 3: AWS Console Verification
-Ensure these match your AWS S3 settings:
-1. **Bucket Name:** `my-assignment-portal-2024`
-2. **Region:** `ap-south-1`
-3. **Block Public Access:** Must be **OFF** (Unchecked).
-4. **CORS:** Ensure the JSON block is correctly configured in the Permissions tab.
+## 🛠️ Step 3: Local Workstation Verification
+To test it here in the workstation:
+1.  Check that your `.env` file matches the variables above.
+2.  Stop the server (Press `Ctrl+C` in the terminal).
+3.  Run `npm run dev`.
+4.  If you get "Access Denied", double-check that your IAM user has `AmazonS3FullAccess` and no "Quarantine" policies attached.
 
-## 📦 Deployment to Amplify
-Once it works here:
-1. Run `sh git-push-shortcut.sh`.
-2. Add these same `NEW_AWS_...` variables to **Amplify Console -> Hosting -> Environment variables**.
-3. Redeploy.
+## 📦 GitHub Push
+If GitHub blocks your push, it means you have credentials inside your code. This version has moved everything to environment variables to prevent this. Run:
+`sh git-push-shortcut.sh`

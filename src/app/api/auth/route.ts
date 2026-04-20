@@ -4,7 +4,7 @@ import { PutObjectCommand, GetObjectCommand, HeadBucketCommand } from '@aws-sdk/
 import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 /**
- * API for AWS S3-based User Registry - Robust Auth Logic
+ * API for AWS S3-based User Registry
  */
 
 export const dynamic = 'force-dynamic';
@@ -12,16 +12,6 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const { action, userType, userData } = await req.json();
-
-    // 1. Connectivity Check (Verify bucket existence/access first)
-    try {
-      await s3Client.send(new HeadBucketCommand({ Bucket: S3_CONFIG.bucketName }));
-    } catch (e: any) {
-      console.error('CRITICAL: S3 Bucket Connectivity Failed', e.name, e.message);
-      return NextResponse.json({ 
-        error: `AWS Connection Error: Cannot access bucket '${S3_CONFIG.bucketName}'. Check region (ap-south-1) and IAM permissions.` 
-      }, { status: 500 });
-    }
 
     if (action === 'register') {
       const id = userType === 'student' 
@@ -37,7 +27,7 @@ export async function POST(req: NextRequest) {
         }));
         return NextResponse.json({ error: 'User already exists in S3 Registry' }, { status: 400 });
       } catch (e: any) {
-        // If not found, proceed to save
+        // Proceed if not found
       }
 
       await s3Client.send(new PutObjectCommand({
@@ -71,23 +61,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
         }
       } catch (e: any) {
-        console.error('S3 Auth Attempt Failed:', {
-          name: e.name,
-          message: e.message,
-          bucket: S3_CONFIG.bucketName,
-          key: key
-        });
-
         if (e.name === 'NoSuchKey' || e.name === 'NotFound') {
           return NextResponse.json({ error: 'User profile not found. Have you registered yet?' }, { status: 404 });
         }
-        
-        if (e.name === 'AccessDenied' || e.name === 'Forbidden') {
-          return NextResponse.json({ 
-            error: `AWS Access Denied (403). Action: Ensure Bucket Policy is EMPTY and 'Block Public Access' is OFF.` 
-          }, { status: 403 });
-        }
-
         return NextResponse.json({ error: `AWS Registry Error: ${e.name}` }, { status: 500 });
       }
     }

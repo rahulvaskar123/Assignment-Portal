@@ -5,7 +5,6 @@ import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 /**
  * API for managing a global registry of Assignments and Submissions in S3.
- * Uses hardcoded bucket config from s3-client.ts.
  */
 
 export const dynamic = 'force-dynamic';

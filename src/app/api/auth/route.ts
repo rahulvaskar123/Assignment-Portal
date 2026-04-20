@@ -3,10 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
-/**
- * API for AWS S3-based User Registry
- */
-
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
@@ -19,25 +15,18 @@ export async function POST(req: NextRequest) {
         : userData.email.toLowerCase().replace(/[@.]/g, '_');
       const key = `registry/${userType}s/${id}.json`;
 
-      // Check if user already exists
       try {
-        await s3Client.send(new GetObjectCommand({
+        await s3Client.send(new PutObjectCommand({
           Bucket: S3_CONFIG.bucketName,
           Key: key,
+          Body: JSON.stringify(userData),
+          ContentType: 'application/json',
         }));
-        return NextResponse.json({ error: 'User already exists in S3 Registry' }, { status: 400 });
+        return NextResponse.json({ success: true });
       } catch (e: any) {
-        // Proceed if not found
+        console.error(`S3 Registration Error [${id}]:`, e.name, e.message);
+        return NextResponse.json({ error: `AWS Registry Error: ${e.name}` }, { status: 500 });
       }
-
-      await s3Client.send(new PutObjectCommand({
-        Bucket: S3_CONFIG.bucketName,
-        Key: key,
-        Body: JSON.stringify(userData),
-        ContentType: 'application/json',
-      }));
-
-      return NextResponse.json({ success: true });
     }
 
     if (action === 'login') {
@@ -61,6 +50,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
         }
       } catch (e: any) {
+        console.error(`S3 Login Error [${id}]:`, e.name, e.message);
         if (e.name === 'NoSuchKey' || e.name === 'NotFound') {
           return NextResponse.json({ error: 'User profile not found. Have you registered yet?' }, { status: 404 });
         }

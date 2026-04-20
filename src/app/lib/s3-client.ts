@@ -2,12 +2,16 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
 /**
- * AWS S3 Client configuration.
- * Automatically trims whitespace from environment variables to prevent "SignatureDoesNotMatch" errors.
+ * AWS S3 Client configuration for the Workstation.
+ * Trims whitespace from environment variables to prevent SignatureDoesNotMatch errors.
  */
 const region = (process.env.AWS_REGION || "ap-south-1").trim();
 const accessKeyId = (process.env.AWS_ACCESS_KEY_ID || "").trim();
 const secretAccessKey = (process.env.AWS_SECRET_ACCESS_KEY || "").trim();
+
+if (!accessKeyId || !secretAccessKey) {
+  console.warn("⚠️ AWS Credentials missing in workstation .env file!");
+}
 
 export const s3Client = new S3Client({
   region,

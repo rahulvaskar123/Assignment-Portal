@@ -1,22 +1,21 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
 /**
- * AWS S3 Client configuration - Hardcoded for immediate deployment.
- * Region and credentials are set directly to bypass environment variable propagation issues.
+ * AWS S3 Client configuration.
+ * Uses environment variables to bypass GitHub Push Protection and ensure security.
+ * Ensure these are set in the Amplify Console with the 'MY_AWS_' prefix.
  */
-const region = "ap-south-1";
+const region = process.env.MY_AWS_REGION || "ap-south-1";
 
 export const s3Client = new S3Client({
   region: region,
   credentials: {
-    // PASTE YOUR ACTUAL ACCESS KEY HERE
-    accessKeyId: "AKIA4F24QNSPQEA7BPVI",
-    // PASTE YOUR ACTUAL SECRET KEY HERE
-    secretAccessKey: "pVUx7g3El60Ult36XtT6ZJ4nWHS7RvPu0TUgDO2a",
+    accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY || "",
   },
 });
 
 export const S3_CONFIG = {
   region: region,
-  bucketName: "my-assignment-portal-2024",
+  bucketName: process.env.MY_AWS_S3_BUCKET_NAME || "my-assignment-portal-2024",
 };

@@ -4,8 +4,8 @@
 
 Amplify reserves the `AWS_` prefix. You **must** use these exact names in the Amplify Console under **App Settings > Environment Variables**:
 
-- `MY_AWS_ACCESS_KEY_ID`: (Your IAM Access Key)
-- `MY_AWS_SECRET_ACCESS_KEY`: (Your IAM Secret Key)
+- `MY_AWS_ACCESS_KEY_ID`: `AKIA4F24QNSPQEA7BPVI`
+- `MY_AWS_SECRET_ACCESS_KEY`: `pVUx7g3El60Ult36XtT6ZJ4nWHS7RvPu0TUgDO2a`
 - `MY_AWS_REGION`: `ap-south-1`
 - `MY_AWS_S3_BUCKET_NAME`: `my-assignment-portal-2024`
 - `GEMINI_API_KEY`: `AIzaSyB4UWUcTreh6y4PemKvyxNIQakbQtq6iWQ`

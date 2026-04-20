@@ -2,7 +2,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 
 /**
  * AWS S3 Client configuration.
- * Hardcoded for direct deployment to bypass environment variable issues.
+ * Hardcoded credentials as requested for the prototype period.
  */
 const region = "ap-south-1";
 

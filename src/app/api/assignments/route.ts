@@ -1,11 +1,9 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { PutObjectCommand, GetObjectCommand, NoSuchKey } from '@aws-sdk/client-s3';
 import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 /**
  * API for managing a global registry of Assignments and Submissions in S3.
- * This acts as the source of truth for all users.
  */
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +36,11 @@ async function saveS3Data(key: string, data: any) {
 
 export async function GET(req: NextRequest) {
   try {
-    const type = req.nextUrl.searchParams.get('type'); // 'assignments' | 'submissions'
+    if (!process.env.MY_AWS_S3_BUCKET_NAME) {
+      return NextResponse.json({ error: 'S3 Configuration missing' }, { status: 500 });
+    }
+
+    const type = req.nextUrl.searchParams.get('type');
     const key = type === 'submissions' ? SUBMISSIONS_KEY : ASSIGNMENTS_KEY;
     const data = await getS3Data(key);
     return NextResponse.json(data);

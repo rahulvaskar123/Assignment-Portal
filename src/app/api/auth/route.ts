@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
@@ -11,10 +10,16 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    // Validate Environment Variables (using updated custom prefix)
-    if (!process.env.MY_AWS_ACCESS_KEY_ID || !process.env.MY_AWS_SECRET_ACCESS_KEY || !process.env.S3_BUCKET_NAME) {
+    // Validate Environment Variables
+    const missingVars = [];
+    if (!process.env.MY_AWS_ACCESS_KEY_ID) missingVars.push('MY_AWS_ACCESS_KEY_ID');
+    if (!process.env.MY_AWS_SECRET_ACCESS_KEY) missingVars.push('MY_AWS_SECRET_ACCESS_KEY');
+    if (!process.env.MY_AWS_S3_BUCKET_NAME) missingVars.push('MY_AWS_S3_BUCKET_NAME');
+    if (!process.env.MY_AWS_REGION) missingVars.push('MY_AWS_REGION');
+
+    if (missingVars.length > 0) {
       return NextResponse.json({ 
-        error: 'Cloud Configuration Missing: Ensure MY_AWS_ACCESS_KEY_ID, MY_AWS_SECRET_ACCESS_KEY, and S3_BUCKET_NAME are set in your Amplify environment variables.' 
+        error: `Cloud Configuration Missing: The following variables are not set in Amplify: ${missingVars.join(', ')}` 
       }, { status: 500 });
     }
 
@@ -35,7 +40,7 @@ export async function POST(req: NextRequest) {
         // If not found, we can proceed
         if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
           return NextResponse.json({ 
-            error: `AWS Region Mismatch: The bucket is in a different region than '${S3_CONFIG.region}'. Please update your MY_AWS_REGION environment variable.` 
+            error: `AWS Region Mismatch: The bucket is in a different region than '${S3_CONFIG.region}'. Please update your MY_AWS_REGION variable.` 
           }, { status: 500 });
         }
       }
@@ -71,7 +76,7 @@ export async function POST(req: NextRequest) {
       } catch (e: any) {
         console.error('S3 Login Error:', e);
         if (e.name === 'NoSuchKey' || e.name === 'NotFound') {
-          return NextResponse.json({ error: 'User not found in AWS Registry.' }, { status: 404 });
+          return NextResponse.json({ error: 'User profile not found in AWS Registry.' }, { status: 404 });
         }
         return NextResponse.json({ error: `AWS Connection Error: ${e.name}` }, { status: 500 });
       }

@@ -1,27 +1,34 @@
 
-# Classroom Hub: Deployment Guide
+# Classroom Hub: AWS Deployment & IAM Guide
 
-## 🔐 Environment Variables
-This project uses Environment Variables for security. You **must** set these in your AWS Amplify Console (Hosting -> Environment variables) for the app to work:
+## 🚀 Step 1: Create a New IAM User (Recommended)
+Since your previous keys were quarantined by AWS, follow these steps to create a clean user:
 
-1. **AWS_ACCESS_KEY_ID**: Your IAM user access key.
-2. **AWS_SECRET_ACCESS_KEY**: Your IAM user secret key.
-3. **AWS_REGION**: `ap-south-1`
-4. **AWS_S3_BUCKET**: `my-assignment-portal-2024`
-5. **GOOGLE_GENAI_API_KEY**: Your Gemini API key.
+1.  **Open AWS Console**: Navigate to the **IAM** (Identity and Access Management) dashboard.
+2.  **Create User**: Click **Users** -> **Create user**.
+3.  **Name**: Call it `assignment-portal-new`.
+4.  **Permissions**:
+    *   Choose **Attach policies directly**.
+    *   Search for **`AmazonS3FullAccess`** and click the checkbox next to it.
+5.  **Finish**: Click **Next** -> **Create user**.
+6.  **Generate Keys**:
+    *   Click on your new user name.
+    *   Go to the **Security credentials** tab.
+    *   Scroll down to **Access keys** and click **Create access key**.
+    *   Choose **Application running outside AWS**.
+    *   **CRITICAL**: Copy the **Access Key ID** and **Secret Access Key**. You will not see the Secret Key again!
 
-## 🔑 IAM User Setup (assignment-portal-app)
-Based on the current IAM configuration, ensure the following:
+## 🔐 Step 2: Set Environment Variables in Amplify
+Go to your **AWS Amplify Console** (Hosting -> Environment variables) and update these:
 
-1. **Policies**: The user must have `AmazonS3FullAccess` attached directly.
-2. **⚠️ IMPORTANT (Quarantine Policy)**: If you see `AWSCompromisedKeyQuarantineV3` in your console (as shown in your screenshot), AWS has blocked your current keys because they were exposed.
-   - **Action**: Delete your current Access Keys in the "Security credentials" tab.
-   - **Action**: Create **NEW** Access Keys.
-   - **Action**: Request AWS Support to remove the Quarantine policy, or create a new IAM user entirely if access persists as Denied.
-   - **Action**: Update your Amplify Environment Variables with the **NEW** keys.
+1.  **AWS_ACCESS_KEY_ID**: (Your new Access Key)
+2.  **AWS_SECRET_ACCESS_KEY**: (Your new Secret Key)
+3.  **AWS_REGION**: `ap-south-1`
+4.  **AWS_S3_BUCKET**: `my-assignment-portal-2024`
+5.  **GOOGLE_GENAI_API_KEY**: (Your Gemini API key)
 
-## 🛠️ Required S3 CORS Configuration
-Paste this into the **CORS** section of your S3 Bucket Permissions to allow file uploads from the browser:
+## 🛠️ Step 3: Required S3 CORS Configuration
+Go to your S3 Bucket -> **Permissions** -> **CORS** and paste this:
 ```json
 [
     {
@@ -34,8 +41,6 @@ Paste this into the **CORS** section of your S3 Bucket Permissions to allow file
 ]
 ```
 
-## 🚀 Deployment
-1. Run `sh git-push-shortcut.sh` to push your code to GitHub.
-2. Go to **AWS Amplify Console**.
-3. Set the variables mentioned above.
-4. Trigger a new build/redeploy.
+## 📂 Deployment
+1.  Run `sh git-push-shortcut.sh` to push code to GitHub.
+2.  Amplify will automatically trigger a build using the new keys.

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         }));
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       } catch (e: any) {
-        // If not found or access denied (which shouldn't happen for exist check), proceed
+        // If not found, proceed
       }
 
       await s3Client.send(new PutObjectCommand({
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         
         if (e.name === 'AccessDenied' || e.name === 'Forbidden') {
           return NextResponse.json({ 
-            error: 'AWS Access Denied. Please check your S3 Bucket Policy permissions for the IAM user.' 
+            error: `AWS Access Denied. Ensure IAM User has S3FullAccess and Bucket '${S3_CONFIG.bucketName}' allows access.` 
           }, { status: 403 });
         }
 

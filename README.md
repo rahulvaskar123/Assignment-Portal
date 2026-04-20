@@ -2,43 +2,33 @@
 
 ## 🔑 Resolving "Access Denied" or "Invalid Principal"
 
-If you see errors when saving policies or logging in, follow these steps exactly:
+If you see an "Access Denied" toast, follow these steps in order:
 
 ### 1. The "Checkbox" Method (Easiest & Recommended)
-This method bypasses the "Invalid Principal" and "Block Public Access" errors:
+This method usually bypasses all "Access Denied" errors:
 1. Go to the **IAM Console** -> **Users**.
 2. Click on your user (**AKIA4F24QNSPQEA7BPVI**).
-3. Look at the **Summary** section at the top. You will see an **ARN** (e.g., `arn:aws:iam::123456789012:user/your-name`). **Copy this ARN for later.**
-4. Click **Add permissions** -> **Attach policies directly**.
-5. Search for `AmazonS3FullAccess`.
-6. **Check the box** next to it.
-7. Click **Next** -> **Add permissions**.
+3. Click **Add permissions** -> **Attach policies directly**.
+4. Search for `AmazonS3FullAccess`.
+5. **Check the box** next to it.
+6. Click **Next** -> **Add permissions**.
 
-### 2. Fixing "Invalid Principal" in Bucket Policy
-If you really want to use a Bucket Policy, you must use **YOUR** specific ARN found in step 1:
-1. Go to your S3 Bucket (`my-assignment-portal-2024`) -> **Permissions** -> **Bucket Policy**.
-2. Paste this, but replace `PASTE_YOUR_ARN_HERE` with the ARN you copied from the IAM User summary:
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": "arn:aws:iam::837175766175:user/assignment-portal-app"
-            },
-            "Action": "s3:*",
-            "Resource": [
-                "arn:aws:s3:::my-assignment-portal-2024",
-                "arn:aws:s3:::my-assignment-portal-2024/*"
-            ]
-        }
-    ]
-}
-```
+### 2. Verify Bucket Name & Region
+The code expects exactly these values. If your bucket has a different name, the keys won't work:
+- **Bucket Name:** `my-assignment-portal-2024`
+- **Region:** `ap-south-1` (Mumbai)
+*If your bucket name is different, you must update it in `src/app/lib/s3-client.ts`.*
 
-### 3. S3 CORS Configuration (Fixed)
-Scroll down to the bottom of the **Permissions** tab in your S3 Bucket and edit the **CORS configuration**. Use this exact JSON (note: `ExposeHeaders` is correct):
+### 3. S3 "Block Public Access" (The Silent Killer)
+Even with Full Access, AWS might block the API if these are on:
+1. Go to your S3 Bucket -> **Permissions** tab.
+2. Find **Block public access (bucket settings)**.
+3. Click **Edit** and **UNCHECK** "Block all public access". 
+4. Type `confirm` to save.
+*(Note: Since you are deleting this bucket in a few days, this is safe for your prototype).*
+
+### 4. S3 CORS Configuration (Final Step)
+Ensure this is pasted at the bottom of the **Permissions** tab:
 ```json
 [
     {

@@ -4,6 +4,7 @@ import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 /**
  * API for managing a global registry of Assignments and Submissions in S3.
+ * Uses hardcoded bucket config from s3-client.ts.
  */
 
 export const dynamic = 'force-dynamic';
@@ -36,10 +37,6 @@ async function saveS3Data(key: string, data: any) {
 
 export async function GET(req: NextRequest) {
   try {
-    if (!process.env.MY_AWS_S3_BUCKET_NAME) {
-      return NextResponse.json({ error: 'S3 Configuration missing' }, { status: 500 });
-    }
-
     const type = req.nextUrl.searchParams.get('type');
     const key = type === 'submissions' ? SUBMISSIONS_KEY : ASSIGNMENTS_KEY;
     const data = await getS3Data(key);

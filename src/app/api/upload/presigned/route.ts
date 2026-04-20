@@ -5,10 +5,6 @@ import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.MY_AWS_S3_BUCKET_NAME) {
-      return NextResponse.json({ error: 'S3 Configuration missing' }, { status: 500 });
-    }
-
     const { fileName, contentType, studentId, subject, operation } = await req.json();
 
     if (operation === 'get') {

@@ -1,20 +1,22 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
 /**
- * AWS S3 Client configuration
- * Uses custom environment variable names to avoid AWS Amplify reserved prefix conflict.
+ * AWS S3 Client configuration - Hardcoded for immediate deployment.
+ * Region and credentials are set directly to bypass environment variable propagation issues.
  */
-const region = process.env.MY_AWS_REGION || "ap-south-1";
+const region = "ap-south-1";
 
 export const s3Client = new S3Client({
   region: region,
   credentials: {
-    accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY || "",
+    // PASTE YOUR ACTUAL ACCESS KEY HERE
+    accessKeyId: "YOUR_ACCESS_KEY_HERE",
+    // PASTE YOUR ACTUAL SECRET KEY HERE
+    secretAccessKey: "YOUR_SECRET_KEY_HERE",
   },
 });
 
 export const S3_CONFIG = {
   region: region,
-  bucketName: process.env.MY_AWS_S3_BUCKET_NAME || "",
+  bucketName: "my-assignment-portal-2024",
 };

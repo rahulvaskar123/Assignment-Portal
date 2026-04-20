@@ -3,26 +3,13 @@ import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, S3_CONFIG } from '@/app/lib/s3-client';
 
 /**
- * API for AWS S3-based User Registry
+ * API for AWS S3-based User Registry - Hardcoded Logic
  */
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    // Validate Environment Variables
-    const missingVars = [];
-    if (!process.env.MY_AWS_ACCESS_KEY_ID) missingVars.push('MY_AWS_ACCESS_KEY_ID');
-    if (!process.env.MY_AWS_SECRET_ACCESS_KEY) missingVars.push('MY_AWS_SECRET_ACCESS_KEY');
-    if (!process.env.MY_AWS_S3_BUCKET_NAME) missingVars.push('MY_AWS_S3_BUCKET_NAME');
-    if (!process.env.MY_AWS_REGION) missingVars.push('MY_AWS_REGION');
-
-    if (missingVars.length > 0) {
-      return NextResponse.json({ 
-        error: `Cloud Configuration Missing: The following variables are not set in Amplify: ${missingVars.join(', ')}` 
-      }, { status: 500 });
-    }
-
     const { action, userType, userData } = await req.json();
 
     if (action === 'register') {
@@ -38,11 +25,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       } catch (e: any) {
         // If not found, we can proceed
-        if (e.name === 'PermanentRedirect' || e.message?.includes('endpoint')) {
-          return NextResponse.json({ 
-            error: `AWS Region Mismatch: The bucket is in a different region than '${S3_CONFIG.region}'. Please update your MY_AWS_REGION variable.` 
-          }, { status: 500 });
-        }
       }
 
       await s3Client.send(new PutObjectCommand({

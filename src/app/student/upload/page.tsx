@@ -28,13 +28,9 @@ import {
   FileDown,
   Cloud,
   AlertCircle,
-  Server,
-  Sparkles,
-  CheckCircle2,
-  AlertTriangle
+  Server
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { assignmentVerificationAssistant } from '@/ai/flows/assignment-verification-assistant';
 
 type Submission = {
   id: string;
@@ -76,8 +72,6 @@ export default function StudentDashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isVerifyingAI, setIsVerifyingAI] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<{ isAligned: boolean; suggestion: string } | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -159,7 +153,6 @@ export default function StudentDashboard() {
     setSelectedSubject(subj);
     setSelectedAssignmentId(assignment.id);
     setDescription(`Submission for: ${assignment.title}`);
-    setAiFeedback(null);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -168,34 +161,6 @@ export default function StudentDashboard() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) setFile(selectedFile);
-  };
-
-  const handleVerifyAI = async () => {
-    if (!description || !selectedSubject) {
-      toast({ title: "Input Required", description: "Please enter a description to verify.", variant: "destructive" });
-      return;
-    }
-
-    setIsVerifyingAI(true);
-    try {
-      // The flow expects one of the specific enum values for subject
-      // If the current subject isn't in the enum, we default to the first one for validation
-      const validSubjects = ['Big Data Analytics', 'Blockchain', 'Cloud Computing', 'Digital Business Management'];
-      const subjectToVerify = validSubjects.includes(selectedSubject) 
-        ? (selectedSubject as any) 
-        : 'Big Data Analytics';
-
-      const result = await assignmentVerificationAssistant({
-        subject: subjectToVerify,
-        freeTextDescription: description
-      });
-      setAiFeedback(result);
-    } catch (error) {
-      console.error('AI Error:', error);
-      toast({ title: "AI Error", description: "Could not connect to Gemini AI.", variant: "destructive" });
-    } finally {
-      setIsVerifyingAI(false);
-    }
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -252,7 +217,6 @@ export default function StudentDashboard() {
       setDescription('');
       setSelectedSubject('');
       setSelectedAssignmentId('');
-      setAiFeedback(null);
       loadData();
     } catch (error: any) {
       toast({
@@ -418,31 +382,8 @@ export default function StudentDashboard() {
                   <CardContent className="pt-6">
                     <form onSubmit={handleUpload} className="space-y-6">
                       <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <Label htmlFor="description">Submission Notes</Label>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-7 text-[10px] font-bold text-accent border-accent/30 hover:bg-accent/5"
-                            onClick={handleVerifyAI}
-                            disabled={isVerifyingAI || !description}
-                          >
-                            {isVerifyingAI ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                            AI Verify
-                          </Button>
-                        </div>
+                        <Label htmlFor="description">Submission Notes</Label>
                         <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Notes for the professor..." className="min-h-[80px]" />
-                        
-                        {aiFeedback && (
-                          <div className={`p-3 rounded-lg border text-xs flex gap-3 animate-in fade-in zoom-in-95 duration-300 ${aiFeedback.isAligned ? 'bg-green-50 border-green-200 text-green-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-                            {aiFeedback.isAligned ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
-                            <div>
-                              <p className="font-bold">{aiFeedback.isAligned ? 'AI Verified' : 'AI Suggestion'}</p>
-                              <p className="opacity-90">{aiFeedback.suggestion}</p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                       <div className="space-y-3">
                         <Label>Select File</Label>
@@ -460,7 +401,6 @@ export default function StudentDashboard() {
                           setSelectedSubject('');
                           setSelectedAssignmentId('');
                           setFile(null);
-                          setAiFeedback(null);
                         }}>Cancel</Button>
                       </div>
                     </form>

@@ -2,8 +2,9 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
 /**
- * AWS S3 Client configuration using environment variables.
- * These must be set in your AWS Amplify Environment Variables console.
+ * AWS S3 Client configuration.
+ * Local: Reads from .env
+ * Production: Reads from Amplify Environment Variables
  */
 export const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-south-1",

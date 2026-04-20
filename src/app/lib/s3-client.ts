@@ -10,9 +10,9 @@ export const s3Client = new S3Client({
   region: region,
   credentials: {
     // PASTE YOUR ACTUAL ACCESS KEY HERE
-    accessKeyId: "YOUR_ACCESS_KEY_HERE",
+    accessKeyId: "AKIA4F24QNSPQEA7BPVI",
     // PASTE YOUR ACTUAL SECRET KEY HERE
-    secretAccessKey: "YOUR_SECRET_KEY_HERE",
+    secretAccessKey: "pVUx7g3El60Ult36XtT6ZJ4nWHS7RvPu0TUgDO2a",
   },
 });
 

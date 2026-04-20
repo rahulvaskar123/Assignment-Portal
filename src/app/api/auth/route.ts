@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         }));
         return NextResponse.json({ error: 'User already exists' }, { status: 400 });
       } catch (e: any) {
-        // If not found, we can proceed
+        // If not found or access denied (which shouldn't happen for exist check), proceed
       }
 
       await s3Client.send(new PutObjectCommand({
@@ -56,10 +56,23 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
         }
       } catch (e: any) {
-        console.error('S3 Login Error:', e);
+        console.error('S3 Auth Error Details:', {
+          name: e.name,
+          message: e.message,
+          bucket: S3_CONFIG.bucketName,
+          key: key
+        });
+
         if (e.name === 'NoSuchKey' || e.name === 'NotFound') {
-          return NextResponse.json({ error: 'User profile not found in AWS Registry.' }, { status: 404 });
+          return NextResponse.json({ error: 'User profile not found. Please register first.' }, { status: 404 });
         }
+        
+        if (e.name === 'AccessDenied' || e.name === 'Forbidden') {
+          return NextResponse.json({ 
+            error: 'AWS Access Denied. Please check your S3 Bucket Policy permissions for the IAM user.' 
+          }, { status: 403 });
+        }
+
         return NextResponse.json({ error: `AWS Connection Error: ${e.name}` }, { status: 500 });
       }
     }
